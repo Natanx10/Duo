@@ -1,0 +1,392 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ── DESIGN TOKENS ─────────────────────────────────────────────
+ * Paleta neuro-design:
+ *  • Fundo escuro suave (reduz fadiga / córtex visual)
+ *  • Primário azul-violeta (calmo, confiança)
+ *  • Accent verde-azulado (sistema de recompensa)
+ *  • Vermelho reservado a urgência (amígdala)
+ *  • Auto-switch via prefers-color-scheme
+ * ────────────────────────────────────────────────────────────── */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-glow: var(--primary-glow);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+
+  --animate-pop: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-fade-in: fade-in 0.25s ease-out;
+  --animate-slide-up: slide-up 0.3s ease-out;
+  --animate-glow: glow 1.6s ease-in-out infinite;
+  --animate-float: float 4s ease-in-out infinite;
+}
+
+/* ── LIGHT THEME (Apple-clean) ── */
+:root {
+  --radius: 0.875rem;
+
+  --background: oklch(0.985 0.005 250);
+  --foreground: oklch(0.18 0.02 260);
+
+  --surface: oklch(1 0 0);
+  --surface-elevated: oklch(0.99 0.003 250);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.18 0.02 260);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.18 0.02 260);
+
+  --primary: oklch(0.58 0.18 270);
+  --primary-foreground: oklch(0.99 0 0);
+  --primary-glow: oklch(0.72 0.16 280);
+
+  --secondary: oklch(0.95 0.01 260);
+  --secondary-foreground: oklch(0.25 0.04 260);
+
+  --muted: oklch(0.96 0.005 260);
+  --muted-foreground: oklch(0.5 0.02 260);
+
+  --accent: oklch(0.72 0.13 180);
+  --accent-foreground: oklch(0.15 0.05 200);
+
+  --success: oklch(0.7 0.16 155);
+  --success-foreground: oklch(0.15 0.05 155);
+
+  --warning: oklch(0.78 0.15 70);
+  --warning-foreground: oklch(0.2 0.05 70);
+
+  --destructive: oklch(0.62 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.9 0.01 260);
+  --input: oklch(0.93 0.01 260);
+  --ring: oklch(0.58 0.18 270);
+}
+
+/* ── DARK THEME (low-fatigue, Teams-like) ── */
+.dark {
+  --background: oklch(0.16 0.018 260);
+  --foreground: oklch(0.96 0.005 250);
+
+  --surface: oklch(0.2 0.02 260);
+  --surface-elevated: oklch(0.24 0.022 262);
+
+  --card: oklch(0.21 0.02 260);
+  --card-foreground: oklch(0.96 0.005 250);
+  --popover: oklch(0.22 0.022 262);
+  --popover-foreground: oklch(0.96 0.005 250);
+
+  --primary: oklch(0.72 0.16 280);
+  --primary-foreground: oklch(0.15 0.03 270);
+  --primary-glow: oklch(0.78 0.18 285);
+
+  --secondary: oklch(0.27 0.025 262);
+  --secondary-foreground: oklch(0.95 0.005 250);
+
+  --muted: oklch(0.25 0.02 262);
+  --muted-foreground: oklch(0.68 0.015 260);
+
+  --accent: oklch(0.74 0.14 180);
+  --accent-foreground: oklch(0.15 0.04 200);
+
+  --success: oklch(0.74 0.16 155);
+  --success-foreground: oklch(0.15 0.05 155);
+
+  --warning: oklch(0.78 0.15 70);
+  --warning-foreground: oklch(0.18 0.05 70);
+
+  --destructive: oklch(0.66 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.3 0.02 262 / 70%);
+  --input: oklch(0.3 0.02 262);
+  --ring: oklch(0.72 0.16 280);
+}
+
+/* ── AUTO DARK via system preference ── */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --background: oklch(0.16 0.018 260);
+    --foreground: oklch(0.96 0.005 250);
+    --surface: oklch(0.2 0.02 260);
+    --surface-elevated: oklch(0.24 0.022 262);
+    --card: oklch(0.21 0.02 260);
+    --card-foreground: oklch(0.96 0.005 250);
+    --popover: oklch(0.22 0.022 262);
+    --popover-foreground: oklch(0.96 0.005 250);
+    --primary: oklch(0.72 0.16 280);
+    --primary-foreground: oklch(0.15 0.03 270);
+    --primary-glow: oklch(0.78 0.18 285);
+    --secondary: oklch(0.27 0.025 262);
+    --secondary-foreground: oklch(0.95 0.005 250);
+    --muted: oklch(0.25 0.02 262);
+    --muted-foreground: oklch(0.68 0.015 260);
+    --accent: oklch(0.74 0.14 180);
+    --accent-foreground: oklch(0.15 0.04 200);
+    --border: oklch(0.3 0.02 262 / 70%);
+    --input: oklch(0.3 0.02 262);
+    --ring: oklch(0.72 0.16 280);
+  }
+}
+
+/* ── KEYFRAMES ── */
+@keyframes pop {
+  0%   { transform: scale(0.9); opacity: 0; }
+  60%  { transform: scale(1.05); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 45%, transparent); }
+  50%      { box-shadow: 0 0 0 10px color-mix(in oklab, var(--primary) 0%, transparent); }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+@keyframes float-gentle {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+@keyframes fade-soft {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+@keyframes pulse-soft {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--primary) 30%, transparent); }
+  50%      { box-shadow: 0 0 0 6px color-mix(in oklab, var(--primary) 0%, transparent); }
+}
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes romantic-pulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 35%, transparent); }
+  50%      { transform: scale(1.015); box-shadow: 0 0 0 6px color-mix(in oklab, var(--accent) 0%, transparent); }
+}
+@keyframes particles-bg {
+  0%   { background-position: 0 0, 12px 18px, 24px 6px; }
+  100% { background-position: 0 -40px, 12px -22px, 24px -34px; }
+}
+/* Onda interna: linhas onduladas que se deslocam horizontalmente DENTRO do card,
+ * sem girar/oscilar o card em si. */
+@keyframes wave-internal {
+  0%   { mask-position-x: 0; -webkit-mask-position-x: 0; }
+  100% { mask-position-x: 100%; -webkit-mask-position-x: 100%; }
+}
+
+/* User-configurable, pointer-events-none safe variants
+ * (curtas, sem bloquear interação). */
+.anim-float        { animation: float 2.6s ease-in-out infinite; }
+.anim-gentle       { animation: float-gentle 3.2s ease-in-out infinite; }
+.anim-fade         { animation: fade-soft 2.8s ease-in-out infinite; }
+.anim-pulse-soft   { animation: pulse-soft 2.2s ease-in-out infinite; }
+.anim-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in oklab, var(--primary) 18%, transparent) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+/* Wave: Animação fluida de ondas usando máscara SVG na base do card */
+.anim-wave {
+  position: relative;
+  overflow: hidden;
+  z-index: 0;
+}
+.anim-wave::before,
+.anim-wave::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 200%;
+  height: 28px;
+  background-repeat: repeat-x;
+  background-position: 0 bottom;
+  z-index: -1;
+  pointer-events: none;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 88.7'%3E%3Cpath d='M800 56.9c-155.5 0-204.9-50-405.5-49.9-200 0-250 49.9-394.5 49.9v31.8h800v-.2-31.6z'/%3E%3C/svg%3E");
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 88.7'%3E%3Cpath d='M800 56.9c-155.5 0-204.9-50-405.5-49.9-200 0-250 49.9-394.5 49.9v31.8h800v-.2-31.6z'/%3E%3C/svg%3E");
+  mask-size: 50% 100%;
+  -webkit-mask-size: 50% 100%;
+}
+.anim-wave::before {
+  background-color: color-mix(in oklab, var(--primary) 25%, transparent);
+  animation: wave-internal 4s linear infinite;
+}
+.anim-wave::after {
+  background-color: color-mix(in oklab, var(--accent) 20%, transparent);
+  animation: wave-internal 3s linear infinite reverse;
+}
+.anim-romantic  { animation: romantic-pulse 2.4s ease-in-out infinite; }
+.anim-particles {
+  position: relative;
+  --particles-opacity: 0.6;
+  --particles-tile: 36px;
+  --particles-saturate: 1;
+  --particles-brightness-mult: 1;
+  background-image:
+    radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--accent)       calc(var(--particles-opacity) * var(--particles-brightness-mult) * 100%), transparent) 1.6px, transparent 2.2px),
+    radial-gradient(circle at 60% 70%, color-mix(in oklab, var(--primary)      calc(var(--particles-opacity) * var(--particles-brightness-mult) * 95%),  transparent) 1.4px, transparent 2.2px),
+    radial-gradient(circle at 85% 40%, color-mix(in oklab, var(--primary-glow) calc(var(--particles-opacity) * var(--particles-brightness-mult) * 100%), transparent) 1.2px, transparent 2.2px);
+  background-size:
+    var(--particles-tile) calc(var(--particles-tile) * 1.1),
+    calc(var(--particles-tile) * 0.78) var(--particles-tile),
+    calc(var(--particles-tile) * 0.9) calc(var(--particles-tile) * 1.05);
+  background-repeat: repeat;
+  filter: saturate(var(--particles-saturate));
+  animation: particles-bg 6s linear infinite;
+}
+
+/* Override default animate-float duration to be shorter / less distracting. */
+.animate-float { animation: float 2.6s ease-in-out infinite; }
+
+/* ── REWARD ANIMATION (hábito concluído) ──────────────────────────
+ * Curta (~900ms total), não bloqueante (pointer-events: none),
+ * e respeitando prefers-reduced-motion abaixo. Feedback visual
+ * primário aparece em <200ms (burst rápido + checkmark scale). */
+@keyframes reward-burst {
+  0%   { transform: scale(0.4); opacity: 0; }
+  30%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+@keyframes reward-spark {
+  0%   { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translate(var(--rx, 0), var(--ry, -28px)) scale(0.2); opacity: 0; }
+}
+.reward-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+.reward-burst {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in oklab, var(--success) 55%, transparent) 0%,
+    transparent 70%
+  );
+  animation: reward-burst 600ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.reward-spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--success);
+  animation: reward-spark 700ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* Reduced-motion: desativa todas as animações decorativas e neutraliza
+ * estilos cosméticos que pulsam/oscilam (mantém apenas leitura estática).
+ * Cumpre WCAG 2.3.3 (Animation from Interactions) e 2.2.2 (Pause/Stop/Hide). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .animate-float, .animate-glow, .animate-pulse,
+  .anim-float, .anim-gentle, .anim-fade, .anim-pulse-soft, .anim-shimmer,
+  .anim-wave, .anim-romantic, .anim-particles {
+    animation: none !important;
+  }
+  /* Mantém o "fundo decorativo" das partículas e ondas com baixíssima
+   * intensidade — sem movimento — para não introduzir ruído visual. */
+  .anim-particles, .anim-wave {
+    background-image: none !important;
+  }
+  .reward-overlay { display: none !important; }
+}
+
+/* ── BASE ── */
+@layer base {
+  * { border-color: var(--color-border); }
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1, h2, h3, h4 { letter-spacing: -0.02em; font-weight: 600; }
+}
+
+/* ── COMPONENT UTILITIES ── */
+@layer components {
+  .glass {
+    background: color-mix(in oklab, var(--surface) 85%, transparent);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+  }
+  .gradient-primary {
+    background: linear-gradient(135deg, var(--primary), var(--primary-glow));
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .tap-target { min-height: 48px; min-width: 48px; }
+}
