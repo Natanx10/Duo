@@ -12,15 +12,7 @@ import { routinesForDay } from "@/lib/calendar-utils";
 import { EventDialog } from "@/components/EventDialog";
 import { TodoDialog } from "@/routes/_app.todos";
 
-// Illustrations
-import coupleClassic from "@/assets/couple-illustration.png";
-import coupleSofa from "@/assets/couple-sofa.png";
-import coupleWalking from "@/assets/couple-walking.png";
-import coupleCoffee from "@/assets/couple-coffee.png";
-import coupleDancing from "@/assets/couple-dancing.png";
-import couplePardoPardo from "@/assets/couple-pardo-pardo.png";
 import couplePardoBranca from "@/assets/couple-pardo-branca.png";
-import coupleNegroNegro from "@/assets/couple-negro-negro.png";
 
 // Prefs
 import { useUiPrefs, animClass, particleVars, resolveHeroImage, activeIllustrationCropStyle, type BuiltInIllustrationId, saveCustomIllustrations } from "@/lib/ui-prefs";
@@ -33,17 +25,6 @@ import { DashboardTodosList } from "@/components/dashboard/DashboardTodosList";
 import { TodayRoutinesList } from "@/components/dashboard/TodayRoutinesList";
 import { UpcomingEventsList } from "@/components/dashboard/UpcomingEventsList";
 import { DashboardQuickActions } from "@/components/dashboard/DashboardQuickActions";
-
-const ILLUSTRATIONS: Record<BuiltInIllustrationId, string> = {
-  couple: coupleClassic,
-  sofa: coupleSofa,
-  walking: coupleWalking,
-  coffee: coupleCoffee,
-  dancing: coupleDancing,
-  "pardo-pardo": couplePardoPardo,
-  "pardo-branca": couplePardoBranca,
-  "negro-negro": coupleNegroNegro,
-};
 
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
@@ -60,12 +41,12 @@ function Dashboard() {
   
   const heroImageSrc = resolveHeroImage({
     sticker: ui.sticker,
-    illustration: ui.illustration,
+    illustration: "pardo-branca",
     customStickers: ui.customStickers,
-    customIllustrations: ui.customIllustrations,
-    builtInIllustrations: ILLUSTRATIONS,
+    customIllustrations: [],
+    builtInIllustrations: { "pardo-branca": couplePardoBranca } as any,
   });
-  const heroFallbackSrc = ILLUSTRATIONS["pardo-branca"] ?? ILLUSTRATIONS["couple"];
+  const heroFallbackSrc = couplePardoBranca;
   const heroAppliesTo = (t: "hero" | "empty" | "login") => ui.heroTargets.includes(t);
   const heroSrcFor = (t: "hero" | "empty" | "login") => (heroAppliesTo(t) ? heroImageSrc : heroFallbackSrc);
   const heroCropFor = (t: "hero" | "empty" | "login") =>

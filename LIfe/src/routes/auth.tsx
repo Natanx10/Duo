@@ -1,14 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { Heart, Loader2, Mail, Lock, User as UserIcon, Sparkles } from "lucide-react";
-import coupleClassic from "@/assets/couple-illustration.png";
-import coupleSofa from "@/assets/couple-sofa.png";
-import coupleWalking from "@/assets/couple-walking.png";
-import coupleCoffee from "@/assets/couple-coffee.png";
-import coupleDancing from "@/assets/couple-dancing.png";
-import couplePardoPardo from "@/assets/couple-pardo-pardo.png";
 import couplePardoBranca from "@/assets/couple-pardo-branca.png";
-import coupleNegroNegro from "@/assets/couple-negro-negro.png";
 import { useUiPrefs, animClass, resolveHeroImage, activeIllustrationCropStyle, type BuiltInIllustrationId } from "@/lib/ui-prefs";
 import { SafeImage } from "@/components/SafeImage";
 import { toast } from "sonner";
@@ -18,17 +11,6 @@ import { joinCoupleByCode } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-const ILLUSTRATIONS: Record<BuiltInIllustrationId, string> = {
-  couple: coupleClassic,
-  sofa: coupleSofa,
-  walking: coupleWalking,
-  coffee: coupleCoffee,
-  dancing: coupleDancing,
-  "pardo-pardo": couplePardoPardo,
-  "pardo-branca": couplePardoBranca,
-  "negro-negro": coupleNegroNegro,
-};
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -112,14 +94,14 @@ function AuthPage() {
         <div className="mb-8 flex flex-col items-center text-center">
           {(() => {
             const loginActive = ui.heroTargets.includes("login");
-            const fallbackSrc = ILLUSTRATIONS["pardo-branca"] ?? ILLUSTRATIONS["couple"];
+            const fallbackSrc = couplePardoBranca;
             const src = loginActive
               ? resolveHeroImage({
                   sticker: ui.sticker,
-                  illustration: ui.illustration,
+                  illustration: "pardo-branca",
                   customStickers: ui.customStickers,
-                  customIllustrations: ui.customIllustrations,
-                  builtInIllustrations: ILLUSTRATIONS,
+                  customIllustrations: [],
+                  builtInIllustrations: { "pardo-branca": couplePardoBranca } as any,
                 })
               : fallbackSrc;
             const cropS = loginActive ? activeIllustrationCropStyle(ui.illustration, ui.customIllustrations) : { objectFit: "contain" as const, objectPosition: "center" as const };

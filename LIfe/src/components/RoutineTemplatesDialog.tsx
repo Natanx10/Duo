@@ -20,7 +20,6 @@ interface Props {
 export function RoutineTemplatesDialog({ coupleId, onApplied }: Props) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [isShared, setIsShared] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const handleApply = async (template: RoutineTemplate) => {
@@ -28,9 +27,7 @@ export function RoutineTemplatesDialog({ coupleId, onApplied }: Props) {
     setBusyId(template.id);
     try {
       const rows = buildRoutinesFromTemplate(template, {
-        userId: user.id,
         coupleId,
-        isShared,
       });
       await bulkCreateRoutines(rows);
       toast.success(`${template.name} aplicado (${rows.length} blocos)`);
@@ -59,16 +56,6 @@ export function RoutineTemplatesDialog({ coupleId, onApplied }: Props) {
             Aplique um modelo pronto com 1 clique. Você pode editar depois.
           </p>
         </DialogHeader>
-
-        {coupleId && (
-          <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
-            <div>
-              <Label htmlFor="tpl-shared" className="cursor-pointer text-sm">Compartilhar com o casal</Label>
-              <p className="text-xs text-muted-foreground">Seu par verá essas rotinas</p>
-            </div>
-            <Switch id="tpl-shared" checked={isShared} onCheckedChange={setIsShared} />
-          </div>
-        )}
 
         <ul className="space-y-2">
           {ROUTINE_TEMPLATES.map((tpl) => {

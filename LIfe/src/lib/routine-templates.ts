@@ -100,9 +100,7 @@ export const ROUTINE_TEMPLATES: RoutineTemplate[] = [
 ];
 
 export interface BuildOptions {
-  userId: string;
   coupleId: string | null;
-  isShared: boolean;
 }
 
 export function buildRoutinesFromTemplate(
@@ -113,15 +111,13 @@ export function buildRoutinesFromTemplate(
   for (const block of template.blocks) {
     for (const day of block.days) {
       rows.push({
-        user_id: opts.userId,
-        couple_id: opts.isShared ? opts.coupleId : null,
+        couple_id: opts.coupleId || null,
         title: block.title,
         day_of_week: day,
         start_time: block.start,
         end_time: block.end,
         color: template.color,
-        is_shared: opts.isShared,
-      });
+      } as RoutineInsert);
     }
   }
   return rows;

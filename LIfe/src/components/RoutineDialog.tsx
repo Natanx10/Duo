@@ -69,13 +69,11 @@ export function RoutineDialog({ open, onOpenChange, routine, coupleId, onSaved }
     setBusy(true);
     try {
       const base = {
-        user_id: user.id,
-        couple_id: isShared ? coupleId : null,
+        couple_id: coupleId || null,
         title: title.trim(),
         start_time: startTime,
         end_time: endTime,
         color,
-        is_shared: isShared,
       };
       if (routine) {
         // Edit: keep single-day semantics (use first selected day)
@@ -198,16 +196,6 @@ export function RoutineDialog({ open, onOpenChange, routine, coupleId, onSaved }
               ))}
             </div>
           </div>
-
-          {coupleId && (
-            <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
-              <div>
-                <Label htmlFor="rt-shared" className="cursor-pointer">Compartilhar com o casal</Label>
-                <p className="text-xs text-muted-foreground">Seu par verá esta rotina na agenda</p>
-              </div>
-              <Switch id="rt-shared" checked={isShared} onCheckedChange={setIsShared} />
-            </div>
-          )}
 
           <DialogFooter className="gap-2 sm:gap-2">
             {routine && (
