@@ -731,6 +731,166 @@ function ProfilePage() {
 
 
 
+      {/* Figurinhas Manuais (upload do usuário) */}
+      <CollapsibleSection
+        icon={<ImageIcon className="h-5 w-5 text-accent" />}
+        iconBg="bg-accent/15"
+        title="Figurinhas Manuais"
+        subtitle="Envie suas próprias imagens (PNG, JPG, SVG)"
+      >
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {customIllustrations.map((ci) => {
+            const id = `custom:${ci.id}`;
+            const active = id === illustration;
+            const crop = ci.crop ?? { zoom: 1, offsetX: 0, offsetY: 0 };
+            return (
+              <div key={ci.id} className="relative col-span-2 rounded-2xl border border-border bg-muted/20 p-3 sm:col-span-1">
+                <button
+                  type="button"
+                  onClick={() => handleIllustrationChange(id)}
+                  className={`flex w-full flex-col items-center gap-2 rounded-xl p-1 transition-all ${
+                    active ? "ring-2 ring-primary" : ""
+                  }`}
+                >
+                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl bg-card">
+                    <SafeImage
+                      src={ci.dataUrl}
+                      fallbackSrc={couplePardoBranca}
+                      alt={ci.label}
+                      style={{ width: "100%", height: "100%", ...cropStyle(crop) }}
+                    />
+                  </div>
+                  <div className="text-center">
+                    <p className={`max-w-full truncate text-xs font-semibold ${active ? "text-primary" : ""}`}>{ci.label}</p>
+                    <p className="text-[10px] text-muted-foreground">Sua imagem</p>
+                  </div>
+                </button>
+
+                {/* Crop controls */}
+                <div className="mt-2 space-y-1.5">
+                  <CropSlider
+                    label="Zoom"
+                    min={100} max={300} step={5}
+                    value={Math.round(crop.zoom * 100)}
+                    suffix="%"
+                    onChange={(v) => updateCustomIllustration(ci.id, { crop: { ...crop, zoom: v / 100 } })}
+                  />
+                  <CropSlider
+                    label="Posição X"
+                    min={-50} max={50} step={1}
+                    value={crop.offsetX}
+                    onChange={(v) => updateCustomIllustration(ci.id, { crop: { ...crop, offsetX: v } })}
+                  />
+                  <CropSlider
+                    label="Posição Y"
+                    min={-50} max={50} step={1}
+                    value={crop.offsetY}
+                    onChange={(v) => updateCustomIllustration(ci.id, { crop: { ...crop, offsetY: v } })}
+                  />
+                  {(crop.zoom !== 1 || crop.offsetX !== 0 || crop.offsetY !== 0) && (
+                    <button
+                      type="button"
+                      onClick={() => updateCustomIllustration(ci.id, { crop: { zoom: 1, offsetX: 0, offsetY: 0 } })}
+                      className="text-[10px] font-medium text-primary hover:underline"
+                    >
+                      Reset crop
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  aria-label={`Excluir ilustração ${ci.label}`}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    toast.loading("Removendo...", { id: "deleting-sticker" });
+                    try {
+                      if (ci.id.includes("-")) { // UUID (database sticker)
+                        await deleteSticker(ci.id, ci.dataUrl);
+                      }
+                      removeCustomIllustration(ci.id);
+                      toast.success("Figurinha removida", { id: "deleting-sticker" });
+                    } catch(err) {
+                      toast.error("Erro ao remover", { id: "deleting-sticker" });
+                    }
+                  }}
+                  className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full border bg-card text-destructive shadow hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              </div>
+            );
+          })}
+
+          {/* Upload tile */}
+          {customIllustrations.length < MAX_CUSTOM_ILLUSTRATIONS && (
+            <label
+              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-primary/40 bg-primary/5 p-3 text-primary transition-colors hover:bg-primary/10"
+              title="Adicionar ilustração do seu dispositivo (PNG, JPG, WEBP, SVG)"
+            >
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                className="sr-only"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) {
+                    toast.error("Imagem muito grande (máx. 2 MB)");
+                    e.target.value = "";
+                    return;
+                  }
+                  try {
+                    const dataUrl = await new Promise<string>((res, rej) => {
+                      const r = new FileReader();
+                      r.onload = () => res(String(r.result));
+                      r.onerror = rej;
+                      r.readAsDataURL(file);
+                    });
+                    const label = file.name.split(".")[0];
+                    // Upload to database if part of couple
+                    if (profile?.couple_id && profile?.id) {
+                      toast.loading("Enviando...", { id: "uploading-sticker" });
+                      try {
+                        const sticker = await uploadSticker(profile.couple_id, profile.id, dataUrl, label);
+                        const id = sticker.id;
+                        addCustomIllustration({ id, label, dataUrl: sticker.image_url, crop: { zoom: 1, offsetX: 0, offsetY: 0 } });
+                        handleIllustrationChange(`custom:${id}`);
+                        toast.success("Figurinha enviada e salva! ✨", { id: "uploading-sticker" });
+                      } catch (err) {
+                        toast.error("Erro ao enviar figurinha para a nuvem", { id: "uploading-sticker" });
+                        console.error(err);
+                      }
+                    } else {
+                      // Fallback for single user without couple
+                      const id = `${Date.now()}`;
+                      addCustomIllustration({ id, label, dataUrl, crop: { zoom: 1, offsetX: 0, offsetY: 0 } });
+                      handleIllustrationChange(`custom:${id}`);
+                      toast.success("Ilustração adicionada localmente ✨");
+                    }
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Erro ao adicionar imagem");
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed bg-card">
+                <Plus className="h-6 w-6" />
+              </div>
+              <p className="text-center text-[11px] font-semibold">Adicionar imagem</p>
+              <p className="text-center text-[10px] text-muted-foreground">PNG/JPG/SVG · até 2 MB</p>
+              <p className="text-center text-[10px] text-muted-foreground">{customIllustrations.length}/{MAX_CUSTOM_ILLUSTRATIONS}</p>
+            </label>
+          )}
+        </div>
+
+        {customIllustrations.length >= MAX_CUSTOM_ILLUSTRATIONS && (
+          <p className="mt-2 rounded-lg bg-muted/40 px-3 py-2 text-[11px] text-muted-foreground">
+            Você atingiu o limite de {MAX_CUSTOM_ILLUSTRATIONS} imagens. Exclua uma para adicionar outra.
+          </p>
+        )}
+      </CollapsibleSection>
+
       <Button variant="ghost" onClick={signOut} className="w-full text-muted-foreground">
         <LogOut className="mr-1.5 h-4 w-4" /> Sair
       </Button>

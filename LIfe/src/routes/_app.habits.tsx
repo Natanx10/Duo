@@ -78,7 +78,7 @@ function HabitsPage() {
     // Feedback visual imediato (<200ms): dispara reward antes do round-trip.
     if (!checked) {
       setRewardingId(habit.id);
-      window.setTimeout(() => setRewardingId((id) => (id === habit.id ? null : id)), 900);
+      window.setTimeout(() => setRewardingId((id) => (id === habit.id ? null : id)), 2500);
     }
     try {
       await toggleHabitCheckin(habit.id, user.id, today, checked ? 1 : 0);
@@ -192,20 +192,13 @@ function HabitsPage() {
                     <Check className="h-6 w-6 text-white animate-pop" strokeWidth={3} />
                   )}
                   {rewardingId === h.id && (
-                    <span className="reward-overlay" aria-hidden="true">
-                      <span className="reward-burst" />
-                      {Array.from({ length: 6 }).map((_, i) => {
-                        const angle = (i / 6) * Math.PI * 2;
-                        const rx = `${Math.cos(angle) * 26}px`;
-                        const ry = `${Math.sin(angle) * 26}px`;
-                        return (
-                          <span
-                            key={i}
-                            className="reward-spark"
-                            style={{ ["--rx" as string]: rx, ["--ry" as string]: ry, animationDelay: `${i * 20}ms` }}
-                          />
-                        );
-                      })}
+                    <span className="reward-overlay" aria-hidden="true" style={{ position: "absolute", zIndex: 50, top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
+                      {/* @ts-ignore */}
+                      <dotlottie-wc
+                        src="https://lottie.host/9229d93c-d22a-4bd4-8d1e-325ccd7b3f7d/IGrMrsPipd.lottie"
+                        style={{ width: "300px", height: "300px" }}
+                        autoplay
+                      ></dotlottie-wc>
                     </span>
                   )}
                 </button>

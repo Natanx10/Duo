@@ -41,10 +41,10 @@ function Dashboard() {
   
   const heroImageSrc = resolveHeroImage({
     sticker: ui.sticker,
-    illustration: "pardo-branca",
+    illustration: ui.illustration,
     customStickers: ui.customStickers,
-    customIllustrations: [],
-    builtInIllustrations: { "pardo-branca": couplePardoBranca } as any,
+    customIllustrations: ui.customIllustrations,
+    builtInIllustrations: { "pardo-branca": couplePardoBranca, "couple": couplePardoBranca } as any,
   });
   const heroFallbackSrc = couplePardoBranca;
   const heroAppliesTo = (t: "hero" | "empty" | "login") => ui.heroTargets.includes(t);

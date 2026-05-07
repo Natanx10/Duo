@@ -98,10 +98,10 @@ function AuthPage() {
             const src = loginActive
               ? resolveHeroImage({
                   sticker: ui.sticker,
-                  illustration: "pardo-branca",
+                  illustration: ui.illustration,
                   customStickers: ui.customStickers,
-                  customIllustrations: [],
-                  builtInIllustrations: { "pardo-branca": couplePardoBranca } as any,
+                  customIllustrations: ui.customIllustrations,
+                  builtInIllustrations: { "pardo-branca": couplePardoBranca, "couple": couplePardoBranca } as any,
                 })
               : fallbackSrc;
             const cropS = loginActive ? activeIllustrationCropStyle(ui.illustration, ui.customIllustrations) : { objectFit: "contain" as const, objectPosition: "center" as const };
