@@ -334,13 +334,11 @@ function NewHabitDialog({
     setBusy(true);
     try {
       await createHabit({
-        user_id: user.id,
         couple_id: isShared ? coupleId : null,
         title: title.trim(),
         color,
         days_of_week: days,
-        is_shared: isShared,
-      });
+      } as any);
       toast.success("Hábito criado ✨");
       setTitle(""); setColor(PRESET_COLORS[0]); setDays([0, 1, 2, 3, 4, 5, 6]); setIsShared(false);
       onOpenChange(false);

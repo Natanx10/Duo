@@ -99,7 +99,6 @@ export function EventDialog({
     setBusy(true);
     try {
       const payload = {
-        user_id: user.id,
         couple_id: isShared ? coupleId : null,
         category_id: categoryId === "none" ? null : categoryId,
         title: title.trim(),
@@ -107,9 +106,8 @@ export function EventDialog({
         location: location.trim() || null,
         starts_at: new Date(startsAt).toISOString(),
         ends_at: new Date(endsAt).toISOString(),
-        is_shared: isShared,
         priority,
-      };
+      } as any;
       if (event) {
         await updateEvent(event.id, payload);
         toast.success("Compromisso atualizado ✨");
