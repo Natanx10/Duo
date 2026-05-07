@@ -339,6 +339,7 @@ export function TodoDialog({ open, onOpenChange, todo, categories, coupleId, onS
     setBusy(true);
     try {
       const payload = {
+        user_id: user.id,
         couple_id: isShared ? coupleId : null,
         category_id: categoryId === "none" ? null : categoryId,
         title: title.trim(),

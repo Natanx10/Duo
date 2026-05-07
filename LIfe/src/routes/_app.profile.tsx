@@ -1000,6 +1000,7 @@ function NewCategoryDialog({ coupleId, onCreated }: { coupleId: string | null; o
     setBusy(true);
     try {
       await createCategory({
+        user_id: user.id,
         couple_id: isShared ? coupleId : null,
         name: name.trim(),
         color,

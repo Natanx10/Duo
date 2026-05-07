@@ -334,6 +334,7 @@ function NewHabitDialog({
     setBusy(true);
     try {
       await createHabit({
+        user_id: user.id,
         couple_id: isShared ? coupleId : null,
         title: title.trim(),
         color,
