@@ -26,6 +26,12 @@ import { TodayRoutinesList } from "@/components/dashboard/TodayRoutinesList";
 import { UpcomingEventsList } from "@/components/dashboard/UpcomingEventsList";
 import { DashboardQuickActions } from "@/components/dashboard/DashboardQuickActions";
 
+import stickerCats from "@/assets/sticker-cats.png";
+import stickerCoffeeMug from "@/assets/sticker-coffee-mug.png";
+import stickerHeart from "@/assets/sticker-heart.png";
+import stickerPlanet from "@/assets/sticker-planet.png";
+import stickerStar from "@/assets/sticker-star.png";
+
 export const Route = createFileRoute("/_app/dashboard")({
   component: Dashboard,
   head: () => ({ meta: [{ title: "Início — Duo" }] }),
@@ -39,12 +45,20 @@ function Dashboard() {
   const importantEventAnim = animClass(ui.importantEvent);
   const coupleAnim = animClass(ui.couple);
   
+  const builtInStickers = {
+    "cats": stickerCats,
+    "coffee-mug": stickerCoffeeMug,
+    "heart": stickerHeart,
+    "planet": stickerPlanet,
+    "star": stickerStar,
+  } as any;
+
   const heroImageSrc = resolveHeroImage({
     sticker: ui.sticker,
     illustration: ui.illustration,
     customStickers: ui.customStickers,
     customIllustrations: ui.customIllustrations,
-    builtInIllustrations: { "pardo-branca": couplePardoBranca, "couple": couplePardoBranca } as any,
+    builtInIllustrations: { "pardo-branca": couplePardoBranca, "couple": couplePardoBranca, ...builtInStickers } as any,
   });
   const heroFallbackSrc = couplePardoBranca;
   const heroAppliesTo = (t: "hero" | "empty" | "login") => ui.heroTargets.includes(t);

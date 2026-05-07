@@ -16,7 +16,7 @@ import {
 } from "@/lib/calendar-utils";
 import {
   ANIMATION_OPTIONS, ITEM_ANIMATION_OPTIONS, ILLUSTRATION_OPTIONS,
-  PARTICLE_PRESETS, type ParticlePreset,
+  STICKER_OPTIONS, PARTICLE_PRESETS, type ParticlePreset,
   type AnimationStyle, type IllustrationId, type BuiltInIllustrationId,
   type CustomIllustration, type HeroTarget,
   loadImportantTaskAnim, loadImportantEventAnim, loadCoupleAnim,
@@ -42,7 +42,7 @@ import { SafeImage } from "@/components/SafeImage";
 import {
   getNotificationPermission, requestNotificationPermission, scheduleAll, subscribeToPushNotifications
 } from "@/lib/notifications";
-import couplePardoBranca from "@/assets/couple-pardo-branca.png";
+import couplePardoBranca from "@/assets/couple-pardo-branca.png"; import stickerCats from "@/assets/sticker-cats.png"; import stickerCoffeeMug from "@/assets/sticker-coffee-mug.png"; import stickerHeart from "@/assets/sticker-heart.png"; import stickerPlanet from "@/assets/sticker-planet.png"; import stickerStar from "@/assets/sticker-star.png"; const builtInStickers = { "cats": stickerCats, "coffee-mug": stickerCoffeeMug, "heart": stickerHeart, "planet": stickerPlanet, "star": stickerStar } as any;
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1345,3 +1345,5 @@ function PushNotificationControl() {
     </div>
   );
 }
+
+

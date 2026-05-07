@@ -108,11 +108,16 @@ export const ILLUSTRATION_OPTIONS: { id: BuiltInIllustrationId; label: string; d
   { id: "negro-negro",   label: "Casal negro",   description: "Tons de pele negros" },
 ];
 
-export type StickerId = string; // "none" | "custom:<id>"  (built-ins removidos)
+export type StickerId = string;
 
-export const BUILTIN_STICKER_IDS = ["none"] as const;
+export const BUILTIN_STICKER_IDS = ["none", "cats", "coffee-mug", "heart", "planet", "star"] as const;
 export const STICKER_OPTIONS: { id: StickerId; label: string; description: string }[] = [
   { id: "none", label: "Sem figurinha", description: "Mostrar apenas a ilustração" },
+  { id: "cats", label: "Gatinhos", description: "Gatinhos fofos" },
+  { id: "coffee-mug", label: "Caneca", description: "Caneca de café" },
+  { id: "heart", label: "Coração", description: "Coração fofo" },
+  { id: "planet", label: "Planeta", description: "Planeta fofo" },
+  { id: "star", label: "Estrela", description: "Estrela fofa" },
 ];
 
 export type CustomSticker = { id: string; label: string; dataUrl: string };
@@ -344,7 +349,8 @@ export function resolveHeroImage(opts: {
       if (found) return found.dataUrl;
       // fallback se a figurinha foi removida
     } else {
-      // built-ins removidos — ignora silenciosamente
+      // built-ins: se existir no dicionário, retorna
+      if (builtInIllustrations[sticker]) return builtInIllustrations[sticker];
     }
   }
   // Illustration — built-in ou custom
