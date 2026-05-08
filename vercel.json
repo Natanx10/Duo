@@ -1,0 +1,12 @@
+{
+  "buildCommand": "cd LIfe && npm install && npm run build",
+  "outputDirectory": "LIfe/dist",
+  "framework": null,
+  "installCommand": "cd LIfe && npm install",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
