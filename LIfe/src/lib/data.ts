@@ -320,8 +320,10 @@ export async function createHabit(payload: Partial<Habit> & { user_id: string; t
     user_id: session.user.id, // Use the REAL auth user ID
     title: payload.title,
     color: payload.color || '#6366f1',
+    icon: payload.icon || '🎯', // Required NOT NULL field
     days_of_week: payload.days_of_week || [0,1,2,3,4,5,6],
     is_active: true,
+    is_shared: payload.is_shared ?? false,
     couple_id: payload.couple_id || null,
     description: payload.description || null,
     target_per_day: payload.target_per_day || 1,
