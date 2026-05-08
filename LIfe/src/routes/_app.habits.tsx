@@ -98,7 +98,7 @@ function HabitsPage() {
       window.setTimeout(() => {
         setRewardingId(null);
         setGlobalReward(false);
-      }, 2500);
+      }, 3500);
     }
     try {
       await toggleHabitCheckin(habit.id, user.id, today, checked ? 1 : 0);
@@ -162,9 +162,9 @@ function HabitsPage() {
             <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/15">
               <Target className="h-6 w-6" />
               {globalReward && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ transform: "scale(4.5)" }}>
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ transform: "scale(5.5)" }}>
                   <dotlottie-wc
-                    src="https://lottie.host/8e31000b-3373-4f94-9b88-1e9679f2257d/O9m8C6sX1U.json"
+                    src="https://lottie.host/9229d93c-d22a-4bd4-8d1e-325ccd7b3f7d/IGrMrsPipd.lottie"
                     autoplay
                   ></dotlottie-wc>
                 </div>
