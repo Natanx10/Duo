@@ -151,13 +151,7 @@ function HabitsPage() {
       </header>
 
       <section className="mb-5 overflow-hidden rounded-3xl border bg-card shadow-sm">
-        <div 
-          className="gradient-primary p-5 text-primary-foreground anim-particles relative"
-          style={particleVars(ui.particlesCouple.intensity, ui.particlesCouple.density, ui.particlesCouple.brightness, ui.particlesCouple.color)}
-        >
-          <div className="absolute top-2 right-2 z-10">
-            <InlineParticleTuner category="couple" className="bg-white/20 border-white/20 text-white hover:bg-white/30" />
-          </div>
+        <div className="gradient-primary p-5 text-primary-foreground">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium opacity-90">Progresso de hoje</p>
