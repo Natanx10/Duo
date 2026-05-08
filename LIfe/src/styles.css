@@ -255,14 +255,17 @@
 .anim-romantic  { animation: romantic-pulse 2.4s ease-in-out infinite; }
 .anim-particles {
   position: relative;
-  --particles-opacity: 0.6;
-  --particles-tile: 36px;
+  --p-color-1: var(--accent);
+  --p-color-2: var(--primary);
+  --p-color-3: var(--primary-glow);
+  --particles-opacity: 0.35;
+  --particles-tile: 32px;
   --particles-saturate: 1;
   --particles-brightness-mult: 1;
   background-image:
-    radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--accent)       calc(var(--particles-opacity) * var(--particles-brightness-mult) * 100%), transparent) 1.6px, transparent 2.2px),
-    radial-gradient(circle at 60% 70%, color-mix(in oklab, var(--primary)      calc(var(--particles-opacity) * var(--particles-brightness-mult) * 95%),  transparent) 1.4px, transparent 2.2px),
-    radial-gradient(circle at 85% 40%, color-mix(in oklab, var(--primary-glow) calc(var(--particles-opacity) * var(--particles-brightness-mult) * 100%), transparent) 1.2px, transparent 2.2px);
+    radial-gradient(circle at 20% 30%, color-mix(in oklab, var(--p-color-1) calc(var(--particles-opacity) * var(--particles-brightness-mult) * 100%), transparent) 1.2px, transparent 1.8px),
+    radial-gradient(circle at 60% 70%, color-mix(in oklab, var(--p-color-2) calc(var(--particles-opacity) * var(--particles-brightness-mult) * 95%),  transparent) 1.0px, transparent 1.6px),
+    radial-gradient(circle at 85% 40%, color-mix(in oklab, var(--p-color-3) calc(var(--particles-opacity) * var(--particles-brightness-mult) * 100%), transparent) 0.8px, transparent 1.4px);
   background-size:
     var(--particles-tile) calc(var(--particles-tile) * 1.1),
     calc(var(--particles-tile) * 0.78) var(--particles-tile),

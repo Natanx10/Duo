@@ -18,7 +18,11 @@ import {
   eventHeight, eventTopOffset, eventsForDay, fmt, formatTime, getMonthGrid,
   getWeekDays, routineHeight, routineTopOffset, routinesForDay,
 } from "@/lib/calendar-utils";
-import { useUiPrefs, animClass, loadDayZoom, loadWeekZoom, saveDayZoom, saveWeekZoom, DAY_ZOOM_MIN, DAY_ZOOM_MAX, WEEK_ZOOM_MIN, WEEK_ZOOM_MAX } from "@/lib/ui-prefs";
+import {
+  useUiPrefs, particleVars, animClass, loadImportantTaskAnim, loadImportantEventAnim, loadCoupleAnim,
+  loadDayZoom, loadWeekZoom, saveDayZoom, saveWeekZoom, DAY_ZOOM_MIN, DAY_ZOOM_MAX, WEEK_ZOOM_MIN, WEEK_ZOOM_MAX,
+} from "@/lib/ui-prefs";
+import { resolveItemEffective, shouldShowTuner } from "@/components/InlineParticleTuner";
 import { EventDialog } from "@/components/EventDialog";
 import { TodoDialog } from "@/routes/_app.todos";
 import { Button } from "@/components/ui/button";
@@ -923,6 +927,9 @@ function ItemBlock({ item, categories, onClick, compact, draggable, hourHeight, 
   const [isDragging, setIsDragging] = useState(false);
   const isShort = height < 32;
   const padPx = isShort ? "2px 6px" : `${ui.itemPadding}px`;
+  
+  const category = item.is_shared ? "couple" : "important";
+  const p = resolveItemEffective(item.id, category);
 
   const InnerContent = (
     <div className={`flex w-full ${isShort ? "flex-row items-center justify-between" : (compact ? "flex-col items-center justify-center" : "flex-col items-start")}`}>
@@ -978,6 +985,7 @@ function ItemBlock({ item, categories, onClick, compact, draggable, hourHeight, 
         borderLeftColor: !isTodo ? color : undefined,
         backgroundColor: `color-mix(in oklab, ${color} ${isTodo ? 14 : 22}%, var(--card))`,
         clipPath: !compact ? "inset(0 round 0.5rem)" : undefined,
+        ...particleVars(p.intensity, p.density, p.brightness, p.color),
       }}
     >
       {compact ? (

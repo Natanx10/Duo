@@ -9,10 +9,10 @@ import {
   type AnimationStyle,
   type ParticlePreset,
   loadItemOverride, saveItemOverride, clearItemOverride,
-  loadParticlesImportantIntensity, loadParticlesImportantDensity, loadParticlesImportantBrightness,
-  loadParticlesCoupleIntensity, loadParticlesCoupleDensity, loadParticlesCoupleBrightness,
-  saveParticlesImportantIntensity, saveParticlesImportantDensity, saveParticlesImportantBrightness,
-  saveParticlesCoupleIntensity, saveParticlesCoupleDensity, saveParticlesCoupleBrightness,
+  loadParticlesImportantIntensity, loadParticlesImportantDensity, loadParticlesImportantBrightness, loadParticlesImportantColor,
+  loadParticlesCoupleIntensity, loadParticlesCoupleDensity, loadParticlesCoupleBrightness, loadParticlesCoupleColor,
+  saveParticlesImportantIntensity, saveParticlesImportantDensity, saveParticlesImportantBrightness, saveParticlesImportantColor,
+  saveParticlesCoupleIntensity, saveParticlesCoupleDensity, saveParticlesCoupleBrightness, saveParticlesCoupleColor,
   applyParticlePresetImportant, applyParticlePresetCouple,
   loadImportantTaskAnim, loadImportantEventAnim, loadCoupleAnim,
   useUiPrefs,
@@ -42,10 +42,12 @@ export function InlineParticleTuner({
   const baseIntensity = category === "important" ? ui.particlesImportant.intensity  : ui.particlesCouple.intensity;
   const baseDensity   = category === "important" ? ui.particlesImportant.density    : ui.particlesCouple.density;
   const baseBright    = category === "important" ? ui.particlesImportant.brightness : ui.particlesCouple.brightness;
+  const baseColor     = category === "important" ? ui.particlesImportant.color      : ui.particlesCouple.color;
 
   const intensity  = override.intensity  ?? baseIntensity;
   const density    = override.density    ?? baseDensity;
   const brightness = override.brightness ?? baseBright;
+  const color      = override.color      ?? baseColor;
   const itemAnim   = override.anim;
 
   const setIntensity = (v: number) => {
@@ -62,6 +64,11 @@ export function InlineParticleTuner({
     if (itemId) saveItemOverride(itemId, { brightness: v });
     else if (category === "important") saveParticlesImportantBrightness(v);
     else saveParticlesCoupleBrightness(v);
+  };
+  const setColor = (v: string) => {
+    if (itemId) saveItemOverride(itemId, { color: v });
+    else if (category === "important") saveParticlesImportantColor(v);
+    else saveParticlesCoupleColor(v);
   };
   const applyPreset = (p: ParticlePreset) => {
     if (itemId) {
@@ -155,6 +162,34 @@ export function InlineParticleTuner({
         <SliderRow label="Densidade"   value={density}   onChange={setDensity} />
         <SliderRow label="Brilho"      value={brightness} onChange={setBrightness}
           hint="Reduz o brilho/ruído sem mudar a densidade." />
+
+        <div className="space-y-1.5">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">Cor customizada</Label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={color || "#6366f1"}
+              onChange={(e) => setColor(e.target.value)}
+              className="h-8 w-8 cursor-pointer overflow-hidden rounded-md border-0 bg-transparent p-0"
+            />
+            <input
+              type="text"
+              value={color}
+              onChange={(e) => setColor(e.target.value)}
+              placeholder="Ex: #ff0000"
+              className="flex-1 rounded-md border bg-card px-2 py-1 text-[11px]"
+            />
+            {color && (
+              <button
+                type="button"
+                onClick={() => setColor("")}
+                className="text-[10px] text-primary hover:underline"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+        </div>
 
         {!itemId && (
           <p className="text-[10px] text-muted-foreground">

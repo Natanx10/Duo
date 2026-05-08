@@ -67,8 +67,8 @@ function Dashboard() {
     heroAppliesTo(t) ? activeIllustrationCropStyle(ui.illustration, ui.customIllustrations) : { objectFit: "contain" as const, objectPosition: "center" as const };
   const heroScale = ui.heroScale;
   
-  const particlesImpStyle = particleVars(ui.particlesImportant.intensity, ui.particlesImportant.density);
-  const particlesCplStyle = particleVars(ui.particlesCouple.intensity, ui.particlesCouple.density);
+  const particlesImpStyle = particleVars(ui.particlesImportant.intensity, ui.particlesImportant.density, ui.particlesImportant.brightness, ui.particlesImportant.color);
+  const particlesCplStyle = particleVars(ui.particlesCouple.intensity, ui.particlesCouple.density, ui.particlesCouple.brightness, ui.particlesCouple.color);
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [events, setEvents] = useState<EventRow[]>([]);

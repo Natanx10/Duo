@@ -42,10 +42,12 @@ const KEYS = {
   partImpIntensity: "duo:particles-important-intensity",
   partImpDensity:   "duo:particles-important-density",
   partImpBrightness:"duo:particles-important-brightness",
+  partImpColor:     "duo:particles-important-color",
   partCplIntensity: "duo:particles-couple-intensity",
   partCplDensity:   "duo:particles-couple-density",
   partCplBrightness:"duo:particles-couple-brightness",
-  // Overrides por item: { [itemId]: { anim?, intensity?, density?, brightness? } }
+  partCplColor:     "duo:particles-couple-color",
+  // Overrides por item: { [itemId]: { anim?, intensity?, density?, brightness?, color? } }
   itemOverrides:    "duo:item-overrides",
   // Zoom da agenda (dia/semana) — persistido entre sessões
   dayZoom:          "duo:day-zoom",
@@ -214,9 +216,11 @@ export const loadSticker       = () => readSticker();
 export const loadParticlesImportantIntensity  = () => readNum(KEYS.partImpIntensity,  DEFAULTS.particlesImportantIntensity,  0, 100);
 export const loadParticlesImportantDensity    = () => readNum(KEYS.partImpDensity,    DEFAULTS.particlesImportantDensity,    0, 100);
 export const loadParticlesImportantBrightness = () => readNum(KEYS.partImpBrightness, DEFAULTS.particlesImportantBrightness, 0, 100);
+export const loadParticlesImportantColor      = () => window.localStorage.getItem(KEYS.partImpColor) || "";
 export const loadParticlesCoupleIntensity     = () => readNum(KEYS.partCplIntensity,  DEFAULTS.particlesCoupleIntensity,     0, 100);
 export const loadParticlesCoupleDensity       = () => readNum(KEYS.partCplDensity,    DEFAULTS.particlesCoupleDensity,       0, 100);
 export const loadParticlesCoupleBrightness    = () => readNum(KEYS.partCplBrightness, DEFAULTS.particlesCoupleBrightness,    0, 100);
+export const loadParticlesCoupleColor         = () => window.localStorage.getItem(KEYS.partCplColor) || "";
 
 /** Day/Week zoom — persisted across sessions. */
 function readFloat(key: string, def: number, min: number, max: number): number {
@@ -381,6 +385,7 @@ export type ItemOverride = {
   intensity?: number;
   density?: number;
   brightness?: number;
+  color?: string;
 };
 export function loadItemOverrides(): Record<string, ItemOverride> {
   if (typeof window === "undefined") return {};
@@ -424,9 +429,11 @@ export function saveSticker(id: StickerId)                { window.localStorage.
 export function saveParticlesImportantIntensity(v: number)  { window.localStorage.setItem(KEYS.partImpIntensity,  String(v)); notify(); }
 export function saveParticlesImportantDensity(v: number)    { window.localStorage.setItem(KEYS.partImpDensity,    String(v)); notify(); }
 export function saveParticlesImportantBrightness(v: number) { window.localStorage.setItem(KEYS.partImpBrightness, String(v)); notify(); }
+export function saveParticlesImportantColor(v: string)      { window.localStorage.setItem(KEYS.partImpColor, v); notify(); }
 export function saveParticlesCoupleIntensity(v: number)     { window.localStorage.setItem(KEYS.partCplIntensity,  String(v)); notify(); }
 export function saveParticlesCoupleDensity(v: number)       { window.localStorage.setItem(KEYS.partCplDensity,    String(v)); notify(); }
 export function saveParticlesCoupleBrightness(v: number)    { window.localStorage.setItem(KEYS.partCplBrightness, String(v)); notify(); }
+export function saveParticlesCoupleColor(v: string)         { window.localStorage.setItem(KEYS.partCplColor, v); notify(); }
 
 /** Presets — aplicam-se a uma categoria (importantes ou casal). */
 export type ParticlePreset = "soft" | "balanced" | "intense";
@@ -464,8 +471,8 @@ export function animClass(style: AnimationStyle): string {
   }
 }
 
-/** CSS vars to drive particle intensity + density + brightness (used inline). */
-export function particleVars(intensity: number, density: number, brightness = 70): React.CSSProperties {
+/** CSS vars to drive particle intensity + density + brightness + color (used inline). */
+export function particleVars(intensity: number, density: number, brightness = 70, color?: string): React.CSSProperties {
   // intensity 0–100 → opacity 0.2–1
   const op = Math.max(0.2, Math.min(1, 0.2 + (intensity / 100) * 0.8));
   // density 0–100 → tile size 56px (sparse) → 18px (dense)
@@ -473,12 +480,18 @@ export function particleVars(intensity: number, density: number, brightness = 70
   // brightness 0–100 → saturate 0.4–1.4 + opacity multiplier 0.45–1
   const sat = (0.4 + (brightness / 100) * 1.0).toFixed(2);
   const bMult = (0.45 + (brightness / 100) * 0.55).toFixed(2);
-  return {
+  const res: React.CSSProperties = {
     ["--particles-opacity" as never]: String(op),
     ["--particles-tile" as never]: `${tile}px`,
     ["--particles-saturate" as never]: sat,
     ["--particles-brightness-mult" as never]: bMult,
   };
+  if (color) {
+    res["--p-color-1" as never] = color;
+    res["--p-color-2" as never] = color;
+    res["--p-color-3" as never] = color;
+  }
+  return res;
 }
 
 /** React hook: subscribe to UI prefs changes and re-render. */
@@ -513,11 +526,13 @@ export function useUiPrefs() {
       intensity:  loadParticlesImportantIntensity(),
       density:    loadParticlesImportantDensity(),
       brightness: loadParticlesImportantBrightness(),
+      color:      loadParticlesImportantColor(),
     },
     particlesCouple: {
       intensity:  loadParticlesCoupleIntensity(),
       density:    loadParticlesCoupleDensity(),
       brightness: loadParticlesCoupleBrightness(),
+      color:      loadParticlesCoupleColor(),
     },
     itemOverrides: loadItemOverrides(),
     heroScale: loadHeroScale(),

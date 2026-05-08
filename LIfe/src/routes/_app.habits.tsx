@@ -18,6 +18,8 @@ import { Progress } from "@/components/ui/progress";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { useUiPrefs, particleVars } from "@/lib/ui-prefs";
+import { InlineParticleTuner } from "@/components/InlineParticleTuner";
 
 export const Route = createFileRoute("/_app/habits")({
   component: HabitsPage,
@@ -42,6 +44,8 @@ function HabitsPage() {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [rewardingId, setRewardingId] = useState<string | null>(null);
+  const [globalReward, setGlobalReward] = useState(false);
+  const ui = useUiPrefs();
   const today = useMemo(() => new Date(), []);
   const weekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 0 }), [today]);
   const weekDays = useMemo(
@@ -88,10 +92,13 @@ function HabitsPage() {
   const handleToggle = async (habit: Habit) => {
     if (!user) return;
     const checked = isCheckedToday(habit.id);
-    // Feedback visual imediato (<200ms): dispara reward antes do round-trip.
     if (!checked) {
       setRewardingId(habit.id);
-      window.setTimeout(() => setRewardingId((id) => (id === habit.id ? null : id)), 2500);
+      setGlobalReward(true);
+      window.setTimeout(() => {
+        setRewardingId(null);
+        setGlobalReward(false);
+      }, 2500);
     }
     try {
       await toggleHabitCheckin(habit.id, user.id, today, checked ? 1 : 0);
@@ -114,7 +121,6 @@ function HabitsPage() {
     }
   };
 
-  // Streak: dias consecutivos contando para trás (para hábitos previstos no dia)
   const computeStreak = (habit: Habit): number => {
     let streak = 0;
     for (let i = 0; i < 60; i++) {
@@ -124,7 +130,7 @@ function HabitsPage() {
         (c) => c.habit_id === habit.id && c.user_id === user?.id && c.checkin_date === toDateOnly(d)
       );
       if (checked) streak++;
-      else if (i > 0) break; // permite "ainda não fez hoje" sem zerar
+      else if (i > 0) break;
     }
     return streak;
   };
@@ -144,9 +150,14 @@ function HabitsPage() {
         <p className="text-sm text-muted-foreground">Construa sua rotina, um dia de cada vez.</p>
       </header>
 
-      {/* Progresso de hoje */}
       <section className="mb-5 overflow-hidden rounded-3xl border bg-card shadow-sm">
-        <div className="gradient-primary p-5 text-primary-foreground">
+        <div 
+          className="gradient-primary p-5 text-primary-foreground anim-particles relative"
+          style={particleVars(ui.particlesCouple.intensity, ui.particlesCouple.density, ui.particlesCouple.brightness, ui.particlesCouple.color)}
+        >
+          <div className="absolute top-2 right-2 z-10">
+            <InlineParticleTuner category="couple" className="bg-white/20 border-white/20 text-white hover:bg-white/30" />
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium opacity-90">Progresso de hoje</p>
@@ -154,8 +165,16 @@ function HabitsPage() {
                 {completedToday}<span className="text-base opacity-80">/{todaysHabits.length}</span>
               </p>
             </div>
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/15">
+            <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/15">
               <Target className="h-6 w-6" />
+              {globalReward && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ transform: "scale(4.5)" }}>
+                  <dotlottie-wc
+                    src="https://lottie.host/8e31000b-3373-4f94-9b88-1e9679f2257d/O9m8C6sX1U.json"
+                    autoplay
+                  ></dotlottie-wc>
+                </div>
+              )}
             </div>
           </div>
           <div className="mt-3">
@@ -164,7 +183,6 @@ function HabitsPage() {
         </div>
       </section>
 
-      {/* Lista de hábitos */}
       {habits.length === 0 ? (
         <div className="rounded-2xl border border-dashed bg-muted/30 p-8 text-center">
           <Target className="mx-auto mb-3 h-12 w-12 text-muted-foreground animate-float" />
@@ -214,16 +232,6 @@ function HabitsPage() {
                       <Check className="h-6 w-6 stroke-[3px]" />
                     </span>
                   )}
-                  {rewardingId === h.id && (
-                    <span className="reward-overlay" aria-hidden="true" style={{ position: "absolute", zIndex: 50, top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }}>
-                      {/* @ts-ignore */}
-                      <dotlottie-wc
-                        src="https://lottie.host/9229d93c-d22a-4bd4-8d1e-325ccd7b3f7d/IGrMrsPipd.lottie"
-                        style={{ width: "300px", height: "300px" }}
-                        autoplay
-                      ></dotlottie-wc>
-                    </span>
-                  )}
                 </button>
                 <div className="min-w-0 flex-1">
                   <p className={`truncate text-sm font-semibold ${checked ? "line-through opacity-70" : ""}`}>
@@ -261,7 +269,6 @@ function HabitsPage() {
         </ul>
       )}
 
-      {/* Mini-grade semanal */}
       {habits.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-2 text-sm font-semibold text-muted-foreground">Esta semana</h2>
