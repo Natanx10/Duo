@@ -3,7 +3,11 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
 import { getRouter } from './router';
 import './styles.css';
+import { initTheme } from './lib/theme';
 import { rescheduleFromStorage } from './lib/notifications';
+
+// Initialize theme
+initTheme();
 
 // Re-schedule any persisted reminders on app startup
 rescheduleFromStorage();

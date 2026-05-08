@@ -102,8 +102,8 @@
   --ring: oklch(0.58 0.18 270);
 }
 
-/* ── DARK THEME (low-fatigue, Teams-like) ── */
-.dark {
+/* ── DARK THEME ── */
+.dark, [data-theme="dark"] {
   --background: oklch(0.16 0.018 260);
   --foreground: oklch(0.96 0.005 250);
 
@@ -143,30 +143,7 @@
 }
 
 /* ── AUTO DARK via system preference ── */
-@media (prefers-color-scheme: dark) {
-  :root:not(.light) {
-    --background: oklch(0.16 0.018 260);
-    --foreground: oklch(0.96 0.005 250);
-    --surface: oklch(0.2 0.02 260);
-    --surface-elevated: oklch(0.24 0.022 262);
-    --card: oklch(0.21 0.02 260);
-    --card-foreground: oklch(0.96 0.005 250);
-    --popover: oklch(0.22 0.022 262);
-    --popover-foreground: oklch(0.96 0.005 250);
-    --primary: oklch(0.72 0.16 280);
-    --primary-foreground: oklch(0.15 0.03 270);
-    --primary-glow: oklch(0.78 0.18 285);
-    --secondary: oklch(0.27 0.025 262);
-    --secondary-foreground: oklch(0.95 0.005 250);
-    --muted: oklch(0.25 0.02 262);
-    --muted-foreground: oklch(0.68 0.015 260);
-    --accent: oklch(0.74 0.14 180);
-    --accent-foreground: oklch(0.15 0.04 200);
-    --border: oklch(0.3 0.02 262 / 70%);
-    --input: oklch(0.3 0.02 262);
-    --ring: oklch(0.72 0.16 280);
-  }
-}
+/* Removed hardcoded @media to allow JS-based theme management via .dark/.light classes */
 
 /* ── KEYFRAMES ── */
 @keyframes pop {

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Bell, ChevronDown, Clock, Copy, Heart, ImageIcon, Loader2, LogOut, Pencil, Plus, Share2, Sliders, Sparkles, Tag, Trash2, Unlink, User as UserIcon, Users } from "lucide-react";
+import { Bell, ChevronDown, Clock, Copy, Heart, ImageIcon, Loader2, LogOut, Moon, Pencil, Plus, RefreshCw, Share2, Sliders, Sparkles, Sun, Tag, Trash2, Unlink, User as UserIcon, Users } from "lucide-react";
+import { getTheme, setTheme, type Theme } from "@/lib/theme";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -95,6 +96,9 @@ function ProfilePage() {
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
+  const [theme, setAppTheme] = useState<Theme>("system");
+
+  const APP_VERSION = "1.0.8-stable";
 
   useEffect(() => {
     setDensity(loadCalendarDensity());
@@ -102,6 +106,7 @@ function ProfilePage() {
     setAnimImportantEvent(loadImportantEventAnim());
     setAnimCouple(loadCoupleAnim());
     setIllustration(loadIllustration());
+    setAppTheme(getTheme());
     
     setWeekColWidth(loadWeekColWidth());
     setItemPadding(loadItemPadding());
@@ -152,6 +157,23 @@ function ProfilePage() {
     setIllustration(id);
     saveIllustration(id);
     toast.success("Ilustração atualizada ✨");
+  };
+
+  const handleThemeChange = (t: Theme) => {
+    setAppTheme(t);
+    setTheme(t);
+    toast.success(`Tema: ${t === "system" ? "Sistema" : t === "dark" ? "Noturno" : "Claro"}`);
+  };
+
+  const handleClearCache = () => {
+    if (confirm("Isso irá recarregar o app e limpar o cache do navegador. Continuar?")) {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(regs => {
+          for(let reg of regs) reg.unregister();
+        });
+      }
+      window.location.reload();
+    }
   };
 
 
@@ -472,12 +494,12 @@ function ProfilePage() {
                 </p>
               </div>
               <button
-                  onClick={() => handleDeleteCategory(c.id)}
-                  className="tap-target rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                  aria-label="Remover"
-                >
-                  <Trash2 className="mx-auto h-4 w-4" />
-                </button>
+                onClick={() => handleDeleteCategory(c.id)}
+                className="tap-target flex h-9 w-9 items-center justify-center rounded-xl bg-destructive/5 text-destructive transition-colors hover:bg-destructive/15 active:scale-95"
+                aria-label="Remover categoria"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </li>
           ))}
         </ul>
@@ -525,18 +547,18 @@ function ProfilePage() {
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => { setEditingRoutine(r); setRoutineDialogOpen(true); }}
-                    className="tap-target rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="tap-target rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground p-2"
                     aria-label="Editar"
                   >
                     <Pencil className="mx-auto h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => handleDeleteRoutine(r.id)}
-                    className="tap-target rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                    aria-label="Excluir"
-                  >
-                    <Trash2 className="mx-auto h-4 w-4" />
-                  </button>
+                  onClick={() => handleDeleteRoutine(r.id)}
+                  className="tap-target flex h-9 w-9 items-center justify-center rounded-xl bg-destructive/5 text-destructive transition-colors hover:bg-destructive/15 active:scale-95"
+                  aria-label="Excluir rotina"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
                 </div>
               </li>
           ))}
@@ -600,6 +622,29 @@ function ProfilePage() {
         subtitle="Aplica-se em todos os dispositivos"
       >
         <div className="space-y-5">
+          {/* Tema */}
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tema Visual</Label>
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-muted p-1">
+              {[
+                { id: "light", label: "Claro", icon: <Sun className="h-3.5 w-3.5" /> },
+                { id: "dark", label: "Noturno", icon: <Moon className="h-3.5 w-3.5" /> },
+                { id: "system", label: "Sistema", icon: <RefreshCw className="h-3.5 w-3.5" /> },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => handleThemeChange(t.id as Theme)}
+                  className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-medium transition-all ${
+                    theme === t.id ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground/70"
+                  }`}
+                >
+                  {t.icon}
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Densidade */}
           <div className="space-y-2">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Densidade</Label>
@@ -910,6 +955,24 @@ function ProfilePage() {
       <Button variant="ghost" onClick={signOut} className="w-full text-muted-foreground">
         <LogOut className="mr-1.5 h-4 w-4" /> Sair
       </Button>
+
+      <div className="mt-8 space-y-4 border-t pt-6 text-center">
+        <div className="flex flex-col items-center gap-2">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Versão do Sistema</p>
+          <code className="rounded bg-muted px-2 py-0.5 text-[11px] font-mono font-bold text-primary">{APP_VERSION}</code>
+        </div>
+        
+        <button 
+          onClick={handleClearCache}
+          className="text-[10px] font-medium text-muted-foreground underline underline-offset-2 hover:text-primary"
+        >
+          Limpar Cache e Forçar Atualização
+        </button>
+
+        <p className="text-[10px] text-muted-foreground/60 px-6">
+          Se as alterações não aparecerem ou houver erros, use o botão acima para forçar o recarregamento.
+        </p>
+      </div>
 
       <RoutineDialog
         open={routineDialogOpen}

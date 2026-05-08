@@ -225,15 +225,13 @@ function HabitsPage() {
                     {h.is_shared && <Heart className="h-3 w-3 text-accent" fill="currentColor" />}
                   </div>
                 </div>
-                {h.user_id === user?.id && (
-                  <button
-                    onClick={() => handleDelete(h.id)}
-                    className="tap-target rounded-lg text-muted-foreground transition-opacity hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
-                    aria-label="Excluir"
-                  >
-                    <Trash2 className="mx-auto h-4 w-4" />
-                  </button>
-                )}
+                <button
+                  onClick={() => handleDelete(h.id)}
+                  className="tap-target flex h-9 w-9 items-center justify-center rounded-xl bg-destructive/5 text-destructive transition-colors hover:bg-destructive/15 active:scale-95"
+                  aria-label="Excluir"
+                >
+                  <Trash2 className="h-4.5 w-4.5" />
+                </button>
               </li>
             );
           })}
