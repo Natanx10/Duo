@@ -1,32 +1,46 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { getCachedSticker } from "@/lib/sticker-cache";
 
 type Props = Omit<React.ImgHTMLAttributes<HTMLImageElement>, "onError"> & {
   src: string;
   fallbackSrc: string;
   /** Friendly toast message shown the first time the image fails. */
   fallbackToast?: string;
+  /** Whether to use the local cache for this image (recommended for stickers/profile). */
+  useCache?: boolean;
 };
 
 /**
- * <img> wrapper that gracefully falls back to a default illustration when the
- * primary src fails to load (e.g. corrupted upload or removed DataURL).
- * Shows a friendly toast once per src so the layout never breaks.
- *
- * Behaves exactly like <img> — accepts the same className/style — so it can
- * drop into existing layouts without wrapping in extra elements.
+ * <img> wrapper that gracefully falls back to a default illustration.
+ * Now supports local caching to save data and speed up subsequent loads.
  */
-export function SafeImage({ src, fallbackSrc, fallbackToast = "Não foi possível carregar a imagem — usando a padrão.", ...rest }: Props) {
+export function SafeImage({ 
+  src, 
+  fallbackSrc, 
+  fallbackToast = "Não foi possível carregar a imagem — usando a padrão.", 
+  useCache = false,
+  ...rest 
+}: Props) {
   const [errored, setErrored] = useState(false);
+  const [displaySrc, setDisplaySrc] = useState<string>(src);
   const notified = useRef<string | null>(null);
+
   useEffect(() => {
     setErrored(false);
     notified.current = null;
-  }, [src]);
+    
+    if (useCache && src && !src.startsWith("data:")) {
+      getCachedSticker(src).then(setDisplaySrc).catch(() => setDisplaySrc(src));
+    } else {
+      setDisplaySrc(src);
+    }
+  }, [src, useCache]);
+
   return (
     <img
       {...rest}
-      src={errored ? fallbackSrc : src}
+      src={errored ? fallbackSrc : displaySrc}
       onError={() => {
         if (errored) return;
         setErrored(true);

@@ -921,32 +921,38 @@ function ItemBlock({ item, categories, onClick, compact, draggable, hourHeight, 
     isCouple ? animClass(ui.couple) : "",
   ].filter(Boolean).join(" ");
   const [isDragging, setIsDragging] = useState(false);
-  const padPx = `${ui.itemPadding}px`;
+  const isShort = height < 32;
+  const padPx = isShort ? "2px 6px" : `${ui.itemPadding}px`;
 
   const InnerContent = (
-    <div className={`flex gap-1 ${compact ? "items-center justify-center" : "items-start"}`}>
-      {isTodo ? (
-        done ? (
-          <CheckSquare className="mt-0.5 h-2.5 w-2.5 shrink-0" style={{ color }} fill="currentColor" />
-        ) : (
-          <Square className="mt-0.5 h-2.5 w-2.5 shrink-0" style={{ color }} />
-        )
-      ) : item.is_shared ? (
-        <Heart className="mt-0.5 h-2.5 w-2.5 shrink-0" style={{ color }} fill="currentColor" />
-      ) : null}
-      <div className="min-w-0 flex-1 text-center">
+    <div className={`flex w-full ${isShort ? "flex-row items-center justify-between" : (compact ? "flex-col items-center justify-center" : "flex-col items-start")}`}>
+      <div className={`flex items-center gap-1.5 min-w-0 ${isShort ? "flex-1" : ""}`}>
+        {isTodo ? (
+          done ? (
+            <CheckSquare className="h-3 w-3 shrink-0" style={{ color }} fill="currentColor" />
+          ) : (
+            <Square className="h-3 w-3 shrink-0" style={{ color }} />
+          )
+        ) : item.is_shared ? (
+          <Heart className="h-3 w-3 shrink-0" style={{ color }} fill="currentColor" />
+        ) : null}
         <p
-          className={`font-bold leading-tight break-words hyphens-auto ${compact ? "text-[10px]" : "text-[13px]"} ${done ? "line-through" : ""}`}
-          style={{ color, wordBreak: "break-word", overflowWrap: "anywhere" }}
+          className={`truncate font-bold leading-none ${isShort ? "text-[11px]" : (compact ? "text-[10px]" : "text-[13px]")} ${done ? "line-through opacity-70" : ""}`}
+          style={{ color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
         >
           {item.title}
         </p>
-        {!compact && (
-          <p className="truncate text-[11px] font-medium tabular-nums text-muted-foreground">
-            {fmt(start, "HH:mm")}–{fmt(end, "HH:mm")}
-          </p>
-        )}
       </div>
+      {!compact && !isShort && (
+        <p className="mt-0.5 truncate text-[11px] font-medium tabular-nums text-muted-foreground opacity-80">
+          {fmt(start, "HH:mm")}–{fmt(end, "HH:mm")}
+        </p>
+      )}
+      {isShort && !compact && (
+        <span className="shrink-0 text-[9px] font-semibold tabular-nums text-muted-foreground opacity-60">
+          {fmt(start, "HH:mm")}
+        </span>
+      )}
     </div>
   );
 
@@ -1000,19 +1006,26 @@ function ItemBlock({ item, categories, onClick, compact, draggable, hourHeight, 
 function RoutineBlock({ routine, compact, onClick, hourHeight }: { routine: Routine; compact?: boolean; onClick?: () => void; hourHeight: number }) {
   const top = routineTopOffset(routine.start_time, hourHeight);
   const height = routineHeight(routine.start_time, routine.end_time, hourHeight);
+  const isShort = height < 28;
   const showRange = !compact && height >= 36;
+  
   const Inner = (
-    <div className="text-center">
+    <div className={`flex w-full ${isShort ? "flex-row items-center justify-between" : "flex-col items-center justify-center"} px-1`}>
       <p
-        className={`font-semibold leading-tight break-words hyphens-auto ${compact ? "text-[10px]" : "text-[12px]"}`}
+        className={`truncate font-semibold leading-tight break-words hyphens-auto ${compact || isShort ? "text-[10px]" : "text-[12px]"}`}
         style={{ color: `color-mix(in oklab, ${routine.color} 85%, var(--foreground))`, wordBreak: "break-word", overflowWrap: "anywhere" }}
       >
         {routine.title}
       </p>
-      {showRange && (
+      {showRange && !isShort && (
         <p className="truncate font-mono text-[10px] opacity-70" style={{ color: `color-mix(in oklab, ${routine.color} 75%, var(--foreground))` }}>
           {formatTime(routine.start_time)}–{formatTime(routine.end_time)}
         </p>
+      )}
+      {isShort && !compact && (
+        <span className="text-[9px] font-bold opacity-40 tabular-nums" style={{ color: routine.color }}>
+          {formatTime(routine.start_time)}
+        </span>
       )}
     </div>
   );

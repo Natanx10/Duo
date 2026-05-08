@@ -66,10 +66,23 @@ function HabitsPage() {
 
   const dow = today.getDay();
   const todaysHabits = habits.filter((h) => h.days_of_week.includes(dow));
-  const isCheckedToday = (habitId: string) =>
-    checkins.some((c) => c.habit_id === habitId && c.user_id === user?.id && c.checkin_date === toDateOnly(today));
+  const getCheckinInfo = (habitId: string) => {
+    const todayStr = toDateOnly(today);
+    const dayCheckins = checkins.filter(c => c.habit_id === habitId && c.checkin_date === todayStr);
+    const uniqueUsers = new Set(dayCheckins.map(c => c.user_id));
+    return {
+      count: uniqueUsers.size,
+      isCheckedByMe: uniqueUsers.has(user?.id || ""),
+    };
+  };
 
-  const completedToday = todaysHabits.filter((h) => isCheckedToday(h.id)).length;
+  const isCheckedToday = (habitId: string) => getCheckinInfo(habitId).isCheckedByMe;
+
+  const completedToday = todaysHabits.filter((h) => {
+    const info = getCheckinInfo(h.id);
+    if (h.is_shared) return info.count >= 2;
+    return info.isCheckedByMe;
+  }).length;
   const progressPct = todaysHabits.length === 0 ? 0 : (completedToday / todaysHabits.length) * 100;
 
   const handleToggle = async (habit: Habit) => {
@@ -179,17 +192,27 @@ function HabitsPage() {
                 <button
                   onClick={() => today_predicted && handleToggle(h)}
                   disabled={!today_predicted}
-                  className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-all ${
-                    checked ? "scale-100 shadow-md" : "border-2 hover:scale-105"
-                  } ${!today_predicted ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}`}
+                  className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 transition-all duration-300 ${
+                    !today_predicted ? "opacity-30" : "hover:scale-110 active:scale-95"
+                  }`}
                   style={{
-                    backgroundColor: checked ? h.color : "transparent",
                     borderColor: h.color,
+                    backgroundColor: "transparent",
                   }}
-                  aria-label={checked ? "Desmarcar" : "Marcar como feito"}
                 >
+                  <div
+                    className="absolute inset-0 rounded-full transition-all duration-500 overflow-hidden"
+                    style={{
+                      background: h.is_shared
+                        ? `linear-gradient(to right, ${h.color} ${getCheckinInfo(h.id).count === 1 ? '50%' : getCheckinInfo(h.id).count >= 2 ? '100%' : '0%'}, transparent 0%)`
+                        : (isCheckedToday(h.id) ? h.color : 'transparent')
+                    }}
+                  />
+                  
                   {checked && (
-                    <Check className="h-6 w-6 text-white animate-pop" strokeWidth={3} />
+                    <span className="relative z-10 text-white animate-pop">
+                      <Check className="h-6 w-6 stroke-[3px]" />
+                    </span>
                   )}
                   {rewardingId === h.id && (
                     <span className="reward-overlay" aria-hidden="true" style={{ position: "absolute", zIndex: 50, top: "50%", left: "50%", transform: "translate(-50%, -50%)", pointerEvents: "none" }}>

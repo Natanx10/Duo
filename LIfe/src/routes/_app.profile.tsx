@@ -817,6 +817,7 @@ function ProfilePage() {
                     <SafeImage
                       src={ci.dataUrl}
                       fallbackSrc={couplePardoBranca}
+                      useCache={true}
                       alt={ci.label}
                       style={{ width: "100%", height: "100%", ...cropStyle(crop) }}
                     />

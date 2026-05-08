@@ -146,6 +146,11 @@
 /* Removed hardcoded @media to allow JS-based theme management via .dark/.light classes */
 
 /* ── KEYFRAMES ── */
+@keyframes wave-internal {
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
+}
+
 @keyframes pop {
   0%   { transform: scale(0.9); opacity: 0; }
   60%  { transform: scale(1.05); opacity: 1; }
@@ -219,6 +224,8 @@
   position: relative;
   overflow: hidden;
   z-index: 0;
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
 }
 .anim-wave::before,
 .anim-wave::after {
@@ -227,7 +234,7 @@
   bottom: 0;
   left: 0;
   width: 200%;
-  height: 28px;
+  height: 32px;
   background-repeat: repeat-x;
   background-position: 0 bottom;
   z-index: -1;
@@ -238,12 +245,12 @@
   -webkit-mask-size: 50% 100%;
 }
 .anim-wave::before {
-  background-color: color-mix(in oklab, var(--primary) 25%, transparent);
-  animation: wave-internal 4s linear infinite;
+  background-color: color-mix(in oklab, var(--primary) 28%, transparent);
+  animation: wave-internal 6s ease-in-out infinite;
 }
 .anim-wave::after {
-  background-color: color-mix(in oklab, var(--accent) 20%, transparent);
-  animation: wave-internal 3s linear infinite reverse;
+  background-color: color-mix(in oklab, var(--accent) 22%, transparent);
+  animation: wave-internal 4s ease-in-out infinite reverse;
 }
 .anim-romantic  { animation: romantic-pulse 2.4s ease-in-out infinite; }
 .anim-particles {
