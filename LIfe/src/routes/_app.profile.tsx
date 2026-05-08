@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
   createCategory, createCouple, createReminder, deleteCategory, deleteReminder,
+  deleteRoutine,
   fetchCategories, fetchCouple, fetchPartnerProfile, fetchProfile, fetchReminders,
   fetchRoutines, joinCoupleByCode, leaveCouple, updateProfile,
   uploadSticker, deleteSticker,
@@ -203,9 +204,21 @@ function ProfilePage() {
   }, [reminders]);
 
   const handleDeleteCategory = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta categoria?")) return;
     try {
       await deleteCategory(id);
       toast.success("Categoria removida");
+      reload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro");
+    }
+  };
+
+  const handleDeleteRoutine = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta rotina?")) return;
+    try {
+      await deleteRoutine(id);
+      toast.success("Rotina removida");
       reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
@@ -216,7 +229,8 @@ function ProfilePage() {
     if (!user) return;
     setBusy(true);
     try {
-      await updateProfile(user.id, { display_name: name, color });
+      // profiles table only has display_name (no color column)
+      await updateProfile(user.id, { display_name: name } as any);
       toast.success("Perfil salvo ✨");
       reload();
     } catch (err) {
@@ -290,6 +304,7 @@ function ProfilePage() {
   };
 
   const handleDeleteReminder = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este lembrete?")) return;
     try {
       await deleteReminder(id);
       toast.success("Lembrete removido");
@@ -513,13 +528,22 @@ function ProfilePage() {
                   </p>
                 </div>
                 {isOwn && (
-                  <button
-                    onClick={() => { setEditingRoutine(r); setRoutineDialogOpen(true); }}
-                    className="tap-target rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                    aria-label="Editar"
-                  >
-                    <Pencil className="mx-auto h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => { setEditingRoutine(r); setRoutineDialogOpen(true); }}
+                      className="tap-target rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                      aria-label="Editar"
+                    >
+                      <Pencil className="mx-auto h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteRoutine(r.id)}
+                      className="tap-target rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Excluir"
+                    >
+                      <Trash2 className="mx-auto h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </li>
             );

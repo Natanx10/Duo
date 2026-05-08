@@ -228,7 +228,7 @@ function HabitsPage() {
                 {h.user_id === user?.id && (
                   <button
                     onClick={() => handleDelete(h.id)}
-                    className="tap-target rounded-lg text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    className="tap-target rounded-lg text-muted-foreground transition-opacity hover:text-destructive sm:opacity-0 sm:group-hover:opacity-100"
                     aria-label="Excluir"
                   >
                     <Trash2 className="mx-auto h-4 w-4" />

@@ -3,6 +3,10 @@ import { createRoot } from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
 import { getRouter } from './router';
 import './styles.css';
+import { rescheduleFromStorage } from './lib/notifications';
+
+// Re-schedule any persisted reminders on app startup
+rescheduleFromStorage();
 
 const router = getRouter();
 

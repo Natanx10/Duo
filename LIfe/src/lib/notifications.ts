@@ -1,12 +1,12 @@
 /**
  * Web Notifications (push local) — funciona no app publicado em HTTPS,
- * com permissão concedida pelo usuário. Não depende de Service Worker
- * para notificações enquanto a aba está aberta.
+ * com permissão concedida pelo usuário.
  *
- * Para um lembrete recorrente diário (HH:MM em dias da semana),
- * agendamos o próximo disparo via setTimeout. Quando dispara,
- * reagendamos para o próximo. Persistimos nada além de localStorage
- * para feedback de "permissão pedida".
+ * Estratégia híbrida:
+ * 1. setTimeout para notificações enquanto a aba está aberta
+ * 2. Service Worker showNotification para melhor compatibilidade
+ * 3. Persiste lembretes no localStorage para re-agendar ao reabrir a aba
+ * 4. Usa visibilitychange para reagendar quando a aba volta ao foco
  */
 
 export type ScheduledReminder = {
@@ -22,6 +22,7 @@ export type ScheduledReminder = {
 };
 
 const TIMERS = new Map<string, number>();
+const STORAGE_KEY = "duo:scheduled-reminders";
 
 export function isNotificationSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
@@ -110,19 +111,54 @@ export function clearAllScheduledReminders() {
   TIMERS.clear();
 }
 
-function fire(reminder: ScheduledReminder) {
+async function fire(reminder: ScheduledReminder) {
   if (!isNotificationSupported() || Notification.permission !== "granted") return;
+  
+  try {
+    // Prefer Service Worker notification (works even when tab is in background)
+    if ("serviceWorker" in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      await registration.showNotification(reminder.title, {
+        body: reminder.body ?? "Lembrete do Duo 💜",
+        tag: `reminder-${reminder.id}`,
+        icon: "/pwa-192x192.png",
+        badge: "/pwa-192x192.png",
+        vibrate: [200, 100, 200],
+        requireInteraction: true,
+      });
+      return;
+    }
+  } catch {
+    // fallback to basic Notification
+  }
+  
   try {
     const n = new Notification(reminder.title, {
-      body: reminder.body ?? "Lembrete do Duo",
+      body: reminder.body ?? "Lembrete do Duo 💜",
       tag: `reminder-${reminder.id}`,
       silent: false,
     });
-    // auto-close após 10s para não acumular
-    window.setTimeout(() => n.close(), 10_000);
+    window.setTimeout(() => n.close(), 15_000);
   } catch {
     /* ignore */
   }
+}
+
+/** Persist reminders to localStorage so they survive page reloads */
+function persistReminders(reminders: ScheduledReminder[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+  } catch { /* ignore */ }
+}
+
+/** Load persisted reminders from localStorage */
+function loadPersistedReminders(): ScheduledReminder[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
 }
 
 export function scheduleReminder(reminder: ScheduledReminder) {
@@ -138,7 +174,6 @@ export function scheduleReminder(reminder: ScheduledReminder) {
   }
   if (!target) return;
 
-  // Math.min para não estourar setTimeout (~24.8 dias). Reagendamos a cada disparo.
   const delay = Math.min(target.getTime() - Date.now(), 2_000_000_000);
   const handle = window.setTimeout(() => {
     fire(reminder);
@@ -151,5 +186,24 @@ export function scheduleReminder(reminder: ScheduledReminder) {
 
 export function scheduleAll(reminders: ScheduledReminder[]) {
   clearAllScheduledReminders();
+  persistReminders(reminders);
   for (const r of reminders) scheduleReminder(r);
+}
+
+/** Re-schedule reminders from localStorage (call on page load/visibility change) */
+export function rescheduleFromStorage() {
+  const reminders = loadPersistedReminders();
+  if (reminders.length > 0) {
+    clearAllScheduledReminders();
+    for (const r of reminders) scheduleReminder(r);
+  }
+}
+
+// Auto re-schedule when tab becomes visible again
+if (typeof document !== "undefined") {
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      rescheduleFromStorage();
+    }
+  });
 }

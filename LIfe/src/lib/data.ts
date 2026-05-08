@@ -130,8 +130,12 @@ export async function leaveCouple(userId: string) {
 }
 
 export async function updateProfile(userId: string, payload: Partial<Profile>) {
-  const { data, error } = await supabase.from("profiles").update(payload).eq("id", userId).select().single();
-  if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
+  // Real profiles table only has: id, display_name, couple_id, avatar_url, created_at
+  // Strip phantom fields that don't exist
+  const { color, updated_at, ...safePayload } = payload as any;
+  console.log("[updateProfile] Sending:", JSON.stringify(safePayload));
+  const { data, error } = await supabase.from("profiles").update(safePayload).eq("id", userId).select().single();
+  if (error) { console.error("[updateProfile] ERROR:", error.code, error.message, error.details); throw error; }
   return data;
 }
 
