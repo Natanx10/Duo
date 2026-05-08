@@ -468,18 +468,16 @@ function ProfilePage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold">{c.name}</p>
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                  {c.is_shared ? <><Users className="h-3 w-3" /> Compartilhada</> : <><UserIcon className="h-3 w-3" /> Pessoal</>}
+                  <Tag className="h-3 w-3" /> Categoria
                 </p>
               </div>
-              {c.user_id === user?.id && (
-                <button
+              <button
                   onClick={() => handleDeleteCategory(c.id)}
                   className="tap-target rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   aria-label="Remover"
                 >
                   <Trash2 className="mx-auto h-4 w-4" />
                 </button>
-              )}
             </li>
           ))}
         </ul>
@@ -513,9 +511,7 @@ function ProfilePage() {
               </p>
             </li>
           )}
-          {routines.map((r) => {
-            const isOwn = r.user_id === user?.id;
-            return (
+          {routines.map((r) => (
               <li key={r.id} className="flex items-center gap-3 rounded-xl border bg-muted/20 p-2.5">
                 <span className="h-9 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
                 <div className="min-w-0 flex-1">
@@ -524,30 +520,26 @@ function ProfilePage() {
                     <span>{WEEKDAY_FULL[r.day_of_week]}</span>
                     <span>•</span>
                     <span className="font-mono">{formatTime(r.start_time)} – {formatTime(r.end_time)}</span>
-                    {r.is_shared && <><span>•</span><Heart className="h-3 w-3 text-accent" fill="currentColor" /></>}
                   </p>
                 </div>
-                {isOwn && (
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => { setEditingRoutine(r); setRoutineDialogOpen(true); }}
-                      className="tap-target rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
-                      aria-label="Editar"
-                    >
-                      <Pencil className="mx-auto h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteRoutine(r.id)}
-                      className="tap-target rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      aria-label="Excluir"
-                    >
-                      <Trash2 className="mx-auto h-4 w-4" />
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => { setEditingRoutine(r); setRoutineDialogOpen(true); }}
+                    className="tap-target rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+                    aria-label="Editar"
+                  >
+                    <Pencil className="mx-auto h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteRoutine(r.id)}
+                    className="tap-target rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label="Excluir"
+                  >
+                    <Trash2 className="mx-auto h-4 w-4" />
+                  </button>
+                </div>
               </li>
-            );
-          })}
+          ))}
         </ul>
       </CollapsibleSection>
 

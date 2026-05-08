@@ -308,9 +308,16 @@ export async function fetchHabits(): Promise<Habit[]> {
 }
 
 export async function createHabit(payload: Partial<Habit> & { user_id: string; title: string }) {
+  // Check auth state first
+  const { data: { session } } = await supabase.auth.getSession();
+  console.log("[createHabit] Auth state:", session ? `logged in as ${session.user.id}` : "NOT LOGGED IN");
+  if (!session) {
+    throw new Error("Você precisa estar logado para criar um hábito");
+  }
+  
   // Only send fields that actually exist in the habits table
   const safePayload = {
-    user_id: payload.user_id,
+    user_id: session.user.id, // Use the REAL auth user ID
     title: payload.title,
     color: payload.color || '#6366f1',
     days_of_week: payload.days_of_week || [0,1,2,3,4,5,6],
@@ -321,7 +328,10 @@ export async function createHabit(payload: Partial<Habit> & { user_id: string; t
   };
   console.log("[createHabit] Sending payload:", JSON.stringify(safePayload));
   const { data, error } = await (supabase as any).from("habits").insert(safePayload).select().single();
-  if (error) { console.error("[createHabit] ERROR:", error.code, error.message, error.details, error.hint); throw error; }
+  if (error) {
+    console.error("[createHabit] FULL ERROR:", JSON.stringify(error));
+    throw new Error(`Erro ao salvar hábito: ${error.code} — ${error.message}${error.hint ? ' (' + error.hint + ')' : ''}`);
+  }
   console.log("[createHabit] Success:", data);
   return data as Habit;
 }
