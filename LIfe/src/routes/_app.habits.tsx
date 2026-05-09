@@ -168,7 +168,7 @@ function HabitsPage() {
               <dotlottie-wc
                 src="https://lottie.host/9229d93c-d22a-4bd4-8d1e-325ccd7b3f7d/IGrMrsPipd.lottie"
                 autoplay
-                style={{ width: "180px", height: "180px" }}
+                style={{ width: "140px", height: "140px" }}
               ></dotlottie-wc>
             </div>
           )}

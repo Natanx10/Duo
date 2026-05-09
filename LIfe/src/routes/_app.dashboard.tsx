@@ -6,11 +6,13 @@ import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
   fetchCategories, fetchEventsInRange, fetchProfile, fetchRoutineExceptions, fetchRoutines, fetchTodos,
-  toggleTodoComplete, fetchStickers, type Category, type EventRow, type Profile, type Routine, type RoutineException, type Todo,
+  toggleTodoComplete, fetchStickers, fetchReminders,
+  type Category, type EventRow, type Profile, type Routine, type RoutineException, type Todo,
 } from "@/lib/data";
 import { routinesForDay } from "@/lib/calendar-utils";
 import { EventDialog } from "@/components/EventDialog";
 import { TodoDialog } from "@/routes/_app.todos";
+import { scheduleAll } from "@/lib/notifications";
 
 import couplePardoBranca from "@/assets/couple-pardo-branca.png";
 
@@ -89,13 +91,14 @@ function Dashboard() {
 
   const reload = useCallback(async () => {
     if (!user) return;
-    const [p, evs, ts, rts, cats, excs] = await Promise.all([
+    const [p, evs, ts, rts, cats, excs, rems] = await Promise.all([
       fetchProfile(user.id),
       fetchEventsInRange(startOfDay(new Date()).toISOString(), endOfDay(addDays(new Date(), 7)).toISOString()),
       fetchTodos(),
       fetchRoutines(),
       fetchCategories(),
       fetchRoutineExceptions(),
+      fetchReminders(),
     ]);
     
     if (p?.couple_id) {
@@ -118,6 +121,16 @@ function Dashboard() {
       } catch (err) {
         console.error("Erro ao carregar figurinhas do casal", err);
       }
+    }
+
+    if (rems) {
+      scheduleAll(rems.filter(r => r.is_active).map(r => ({
+        id: r.id,
+        title: r.title,
+        remindTime: r.remind_time,
+        remindAt: r.remind_at,
+        daysOfWeek: r.days_of_week
+      })));
     }
 
     setProfile(p);
@@ -206,7 +219,7 @@ function Dashboard() {
         <h1 className="text-3xl font-bold tracking-tight">{profile?.display_name ?? "você"}</h1>
       </header>
 
-      {!profile?.couple_id && (
+      {!loading && !profile?.couple_id && (
         <Link
           to="/profile"
           className="mb-5 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 transition-all hover:bg-primary/10"

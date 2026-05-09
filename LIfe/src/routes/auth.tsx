@@ -11,6 +11,7 @@ import { joinCoupleByCode } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Logo } from "@/components/Logo";
 
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
@@ -120,9 +121,7 @@ function AuthPage() {
               </div>
             );
           })()}
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-3xl gradient-primary shadow-lg shadow-primary/30">
-            <Heart className="h-8 w-8 text-primary-foreground" fill="currentColor" />
-          </div>
+          <Logo size={64} className="mb-4 shadow-lg shadow-primary/30" />
           <h1 className="text-3xl font-bold tracking-tight">
             <span className="text-gradient">Duo</span>
           </h1>

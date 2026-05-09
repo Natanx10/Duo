@@ -15,7 +15,8 @@ import {
 } from "@/components/ui/select";
 import {
   createEvent, deleteEvent, updateEvent,
-  type Category, type EventRow, type Routine,
+  fetchReminders, createReminder, deleteReminder,
+  type Category, type EventRow, type Routine, type Reminder,
 } from "@/lib/data";
 import { detectConflicts } from "@/lib/calendar-utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -51,7 +52,9 @@ export function EventDialog({
   const [categoryId, setCategoryId] = useState<string>("none");
   const [isShared, setIsShared] = useState(false);
   const [priority, setPriority] = useState<number>(1);
+  const [shouldNotify, setShouldNotify] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [existingReminder, setExistingReminder] = useState<Reminder | null>(null);
 
   const conflicts = useMemo(() => {
     if (!startsAt || !endsAt) return [];
@@ -77,6 +80,12 @@ export function EventDialog({
       setCategoryId(event.category_id ?? "none");
       setIsShared(event.is_shared);
       setPriority(event.priority);
+      // Busca se já existe lembrete para este evento
+      fetchReminders().then(rems => {
+        const found = rems.find(r => r.event_id === event.id);
+        setExistingReminder(found || null);
+        setShouldNotify(!!found);
+      });
     } else {
       const base = defaultDate ? new Date(defaultDate) : new Date();
       base.setHours(defaultHour ?? 9, 0, 0, 0);
@@ -88,8 +97,10 @@ export function EventDialog({
       setStartsAt(toLocalInput(base));
       setEndsAt(toLocalInput(end));
       setCategoryId("none");
-      setIsShared(!!coupleId); // default: atividade em casal quando há parceiro
+      setIsShared(!!coupleId);
       setPriority(1);
+      setShouldNotify(false);
+      setExistingReminder(null);
     }
   }, [open, event, defaultDate, defaultHour]);
 
@@ -109,13 +120,37 @@ export function EventDialog({
         ends_at: new Date(endsAt).toISOString(),
         priority,
       } as any;
+      let savedEvent: EventRow;
       if (event) {
-        await updateEvent(event.id, payload);
+        savedEvent = await updateEvent(event.id, payload);
         toast.success("Compromisso atualizado ✨");
       } else {
-        await createEvent(payload);
+        savedEvent = await createEvent(payload);
         toast.success("Compromisso criado 🎉");
       }
+
+      // Gerenciar lembrete
+      if (shouldNotify) {
+        const start = new Date(startsAt);
+        const remindAt = new Date(start.getTime() - 15 * 60_000).toISOString(); // 15min antes
+        const remPayload = {
+          user_id: user.id,
+          title: `Lembrete: ${title}`,
+          event_id: savedEvent.id,
+          remind_at: remindAt,
+          is_active: true,
+        };
+        if (existingReminder) {
+          // update (já existe no data.ts as updateReminder)
+          await (import("@/lib/data").then(m => m.updateReminder(existingReminder.id, remPayload)));
+        } else {
+          await createReminder(remPayload);
+        }
+      } else if (existingReminder) {
+        // remove se o usuário desmarcou
+        await deleteReminder(existingReminder.id);
+      }
+
       onSaved();
       onOpenChange(false);
     } catch (err) {
@@ -215,6 +250,14 @@ export function EventDialog({
               <Switch id="ev-shared" checked={isShared} onCheckedChange={setIsShared} />
             </div>
           )}
+
+          <div className="flex items-center justify-between rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+            <div>
+              <Label htmlFor="ev-notify" className="cursor-pointer">Notificação</Label>
+              <p className="text-xs text-muted-foreground">Me avisar 15 min antes do início</p>
+            </div>
+            <Switch id="ev-notify" checked={shouldNotify} onCheckedChange={setShouldNotify} />
+          </div>
 
           {conflicts.length > 0 && (
             <div className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-3 text-xs">
