@@ -151,7 +151,7 @@ function HabitsPage() {
       </header>
 
       <section className="mb-5 overflow-hidden rounded-3xl border bg-card shadow-sm">
-        <div className="gradient-primary p-5 text-primary-foreground">
+        <div className="gradient-primary p-5 text-primary-foreground relative">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs font-medium opacity-90">Progresso de hoje</p>
@@ -161,16 +161,17 @@ function HabitsPage() {
             </div>
             <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-white/15">
               <Target className="h-6 w-6" />
-              {globalReward && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none" style={{ transform: "scale(5.5)" }}>
-                  <dotlottie-wc
-                    src="https://lottie.host/9229d93c-d22a-4bd4-8d1e-325ccd7b3f7d/IGrMrsPipd.lottie"
-                    autoplay
-                  ></dotlottie-wc>
-                </div>
-              )}
             </div>
           </div>
+          {globalReward && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
+              <dotlottie-wc
+                src="https://lottie.host/9229d93c-d22a-4bd4-8d1e-325ccd7b3f7d/IGrMrsPipd.lottie"
+                autoplay
+                style={{ width: "180px", height: "180px" }}
+              ></dotlottie-wc>
+            </div>
+          )}
           <div className="mt-3">
             <Progress value={progressPct} className="h-2 bg-white/20" />
           </div>
