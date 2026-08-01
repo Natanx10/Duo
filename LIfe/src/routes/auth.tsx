@@ -14,6 +14,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Logo } from "@/components/Logo";
 
+const PRODUCTION_ORIGIN = "https://duo-life-one.vercel.app";
+
+function getAuthRedirectOrigin() {
+  if (typeof window === "undefined") return PRODUCTION_ORIGIN;
+
+  const { origin, hostname } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return PRODUCTION_ORIGIN;
+  }
+
+  return origin;
+}
+
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
   validateSearch: (search: Record<string, unknown>): { invite?: string } => ({
@@ -68,7 +81,7 @@ function AuthPage() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard${invite ? `?invite=${invite}` : ""}`,
+            emailRedirectTo: `${getAuthRedirectOrigin()}/dashboard${invite ? `?invite=${invite}` : ""}`,
             data: {
               display_name: name || email.split("@")[0],
               color: defaultProfileColor(name || email.split("@")[0], email),
@@ -98,7 +111,7 @@ function AuthPage() {
     setBusy(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${getAuthRedirectOrigin()}/reset-password`,
       });
       if (error) throw error;
       toast.success("Enviamos um link de recuperacao para seu email");
