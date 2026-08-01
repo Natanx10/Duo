@@ -7,8 +7,16 @@
 const CACHE_PREFIX = "duo-sticker-";
 const MAX_CACHE_ITEMS = 20;
 
+function cacheKeyFor(url: string): string {
+  let hash = 0;
+  for (let i = 0; i < url.length; i += 1) {
+    hash = ((hash << 5) - hash + url.charCodeAt(i)) | 0;
+  }
+  return `${CACHE_PREFIX}${Math.abs(hash).toString(36)}-${url.length}`;
+}
+
 export async function getCachedSticker(url: string): Promise<string> {
-  const cacheKey = CACHE_PREFIX + btoa(url).substring(0, 32);
+  const cacheKey = cacheKeyFor(url);
   const cached = localStorage.getItem(cacheKey);
   
   if (cached) {

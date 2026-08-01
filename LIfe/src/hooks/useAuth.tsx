@@ -16,16 +16,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Listener FIRST
+    // Correct Supabase auth pattern:
+    // 1. onAuthStateChange is the single source of truth for session state
+    // 2. getSession() seeds the initial session so the first render isn't blank,
+    //    but the listener overrides it — this avoids the race condition where
+    //    an expired token is being refreshed and the old/null session briefly flashes.
+    let initialized = false;
+
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
-      setLoading(false);
+      if (!initialized) {
+        initialized = true;
+        setLoading(false);
+      }
     });
-    // THEN existing session
+
+    // Seed initial session immediately so we don't wait for the listener
     supabase.auth.getSession().then(({ data: { session: s } }) => {
-      setSession(s);
-      setLoading(false);
+      if (!initialized) {
+        // Listener hasn't fired yet — set session now and mark initialized
+        setSession(s);
+        initialized = true;
+        setLoading(false);
+      }
+      // If listener already fired, it already set the correct (possibly refreshed) session
     });
+
     return () => sub.subscription.unsubscribe();
   }, []);
 

@@ -2,15 +2,17 @@ import { Heart } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import { fmt } from "@/lib/calendar-utils";
 import { SafeImage } from "@/components/SafeImage";
-import type { EventRow, Category } from "@/lib/data";
+import type { Category } from "@/lib/data";
+import type { HeroTarget } from "@/lib/ui-prefs";
+import type { DashboardScheduleItem } from "./types";
 
 interface UpcomingEventsListProps {
-  upcoming: EventRow[];
+  upcoming: DashboardScheduleItem[];
   categories: Category[];
   heroScale: number;
-  heroSrcFor: (t: "hero" | "empty" | "login") => string;
+  heroSrcFor: (t: HeroTarget) => string;
   heroFallbackSrc: string;
-  heroCropFor: (t: "hero" | "empty" | "login") => React.CSSProperties;
+  heroCropFor: (t: HeroTarget) => React.CSSProperties;
 }
 
 export function UpcomingEventsList({
@@ -46,6 +48,7 @@ export function UpcomingEventsList({
         <ul className="space-y-2">
           {upcoming.map((e) => {
             const cat = categories.find((c) => c.id === e.category_id);
+            const color = cat?.color ?? e.color;
             return (
               <li key={e.id} className="flex items-center gap-3 rounded-xl border bg-card p-3">
                 <div className="flex h-12 w-12 flex-col items-center justify-center rounded-xl bg-muted">
@@ -60,8 +63,8 @@ export function UpcomingEventsList({
                     {fmt(e.starts_at, "HH:mm")} • {fmt(e.starts_at, "EEEE")}
                   </p>
                 </div>
-                {cat && (
-                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: cat.color }} />
+                {color && (
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
                 )}
                 {e.is_shared && <Heart className="h-3.5 w-3.5 text-accent" fill="currentColor" />}
               </li>

@@ -188,10 +188,6 @@
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
-@keyframes romantic-pulse {
-  0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 color-mix(in oklab, var(--accent) 35%, transparent); }
-  50%      { transform: scale(1.015); box-shadow: 0 0 0 6px color-mix(in oklab, var(--accent) 0%, transparent); }
-}
 @keyframes particles-bg {
   0%   { background-position: 0 0, 12px 18px, 24px 6px; }
   100% { background-position: 0 -40px, 12px -22px, 24px -34px; }
@@ -199,8 +195,8 @@
 /* Onda interna: linhas onduladas que se deslocam horizontalmente DENTRO do card,
  * sem girar/oscilar o card em si. */
 @keyframes wave-internal {
-  0%   { mask-position-x: 0; -webkit-mask-position-x: 0; }
-  100% { mask-position-x: 100%; -webkit-mask-position-x: 100%; }
+  0%   { transform: translate3d(0, 0, 0); }
+  100% { transform: translate3d(-50%, 0, 0); }
 }
 
 /* User-configurable, pointer-events-none safe variants
@@ -233,7 +229,7 @@
   position: absolute;
   bottom: 0;
   left: 0;
-  width: 200%;
+  width: 300%;
   height: 32px;
   background-repeat: repeat-x;
   background-position: 0 bottom;
@@ -246,13 +242,12 @@
 }
 .anim-wave::before {
   background-color: color-mix(in oklab, var(--primary) 28%, transparent);
-  animation: wave-internal 6s ease-in-out infinite;
+  animation: wave-internal 8s linear infinite;
 }
 .anim-wave::after {
   background-color: color-mix(in oklab, var(--accent) 22%, transparent);
-  animation: wave-internal 4s ease-in-out infinite reverse;
+  animation: wave-internal 11s linear infinite reverse;
 }
-.anim-romantic  { animation: romantic-pulse 2.4s ease-in-out infinite; }
 .anim-particles {
   position: relative;
   --p-color-1: var(--accent);
@@ -333,7 +328,7 @@
   }
   .animate-float, .animate-glow, .animate-pulse,
   .anim-float, .anim-gentle, .anim-fade, .anim-pulse-soft, .anim-shimmer,
-  .anim-wave, .anim-romantic, .anim-particles {
+  .anim-wave, .anim-particles {
     animation: none !important;
   }
   /* Mantém o "fundo decorativo" das partículas e ondas com baixíssima

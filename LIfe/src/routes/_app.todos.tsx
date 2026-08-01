@@ -9,10 +9,13 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  createTodo, deleteTodo, fetchCategories, fetchProfile, fetchTodos,
-  toggleTodoComplete, updateTodo,
+  createTodo, deleteTodo, toggleTodoComplete, updateTodo,
   type Category, type Todo,
 } from "@/lib/data";
+import { 
+  useTodos, useCategories, useProfile, useApiMutation, QUERY_KEYS 
+} from "@/hooks/useData";
+import { useQueryClient } from "@tanstack/react-query";
 import { PRIORITY_LABELS } from "@/lib/calendar-utils";
 import { useUiPrefs, animClass, particleVars } from "@/lib/ui-prefs";
 import { InlineParticleTuner, shouldShowTuner } from "@/components/InlineParticleTuner";
@@ -38,32 +41,32 @@ type Filter = "all" | "today" | "scheduled" | "shared" | "done";
 function TodosPage() {
   const { user } = useAuth();
   const ui = useUiPrefs();
+  const queryClient = useQueryClient();
   const importantAnim = animClass(ui.important);
   const coupleAnim = animClass(ui.couple);
   const particlesImpStyle = particleVars(ui.particlesImportant.intensity, ui.particlesImportant.density);
   const particlesCplStyle = particleVars(ui.particlesCouple.intensity, ui.particlesCouple.density);
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [coupleId, setCoupleId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  const { data: profile } = useProfile(user?.id);
+  const coupleId = profile?.couple_id ?? null;
+  const { data: todos = [] } = useTodos(coupleId, user?.id);
+  const { data: categories = [] } = useCategories(coupleId, user?.id);
+  
+  const loading = !profile && !!user;
+  
   const [filter, setFilter] = useState<Filter>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Todo | null>(null);
+  const [editing, setEditing] = useState<any | null>(null);
 
-  const reload = useCallback(async () => {
-    if (!user) return;
-    const [ts, cats, profile] = await Promise.all([
-      fetchTodos(),
-      fetchCategories(),
-      fetchProfile(user.id),
-    ]);
-    setTodos(ts);
-    setCategories(cats);
-    setCoupleId(profile?.couple_id ?? null);
-    setLoading(false);
-  }, [user]);
+  const toggleMutation = useApiMutation(
+    ({ id, isCompleted }: { id: string; isCompleted: boolean }) => toggleTodoComplete(id, isCompleted),
+    [QUERY_KEYS.todos]
+  );
 
-  useEffect(() => { reload(); }, [reload]);
+  const deleteMutation = useApiMutation(
+    (id: string) => deleteTodo(id),
+    [QUERY_KEYS.todos]
+  );
 
   const filtered = useMemo(() => {
     return todos.filter((t) => {
@@ -86,10 +89,9 @@ function TodosPage() {
     };
   }, [todos]);
 
-  const handleToggle = async (t: Todo) => {
+  const handleToggle = async (t: any) => {
     try {
-      await toggleTodoComplete(t.id, !t.is_completed);
-      reload();
+      await toggleMutation.mutateAsync({ id: t.id, isCompleted: !t.is_completed });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -97,9 +99,8 @@ function TodosPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteTodo(id);
+      await deleteMutation.mutateAsync(id);
       toast.success("Tarefa removida");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -262,7 +263,10 @@ function TodosPage() {
         todo={editing}
         categories={categories}
         coupleId={coupleId}
-        onSaved={reload}
+        onSaved={() => {
+          setDialogOpen(false);
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.todos });
+        }}
       />
     </div>
   );
@@ -340,7 +344,7 @@ export function TodoDialog({ open, onOpenChange, todo, categories, coupleId, onS
     try {
       const payload = {
         user_id: user.id,
-        couple_id: isShared ? coupleId : null,
+        couple_id: coupleId,
         category_id: categoryId === "none" ? null : categoryId,
         title: title.trim(),
         description: description.trim() || null,
@@ -348,6 +352,7 @@ export function TodoDialog({ open, onOpenChange, todo, categories, coupleId, onS
         duration_minutes: duration,
         show_in_calendar: hasDate && showInCalendar,
         priority,
+        is_shared: isShared,
       } as any;
       if (todo) {
         await updateTodo(todo.id, payload);

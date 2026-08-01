@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { effectiveProfileColor } from "@/lib/profile-colors";
 
 export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 export type Couple = Database["public"]["Tables"]["couples"]["Row"];
@@ -14,10 +15,15 @@ export type Routine = Database["public"]["Tables"]["routines"]["Row"];
 export type RoutineInsert = Database["public"]["Tables"]["routines"]["Insert"];
 export type RoutineUpdate = Database["public"]["Tables"]["routines"]["Update"];
 
+function accessibleHabitFilter(coupleId: string | null, userId: string): string {
+  if (!coupleId) return `user_id.eq.${userId}`;
+  return `user_id.eq.${userId},and(is_shared.eq.true,couple_id.eq.${coupleId})`;
+}
+
 export async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
-  return data;
+  return data ? effectiveProfileColor(data) : null;
 }
 
 export async function fetchPartnerProfile(coupleId: string, currentUserId: string): Promise<Profile | null> {
@@ -26,9 +32,11 @@ export async function fetchPartnerProfile(coupleId: string, currentUserId: strin
     .select("*")
     .eq("couple_id", coupleId)
     .neq("id", currentUserId)
-    .maybeSingle();
+    .order("created_at", { ascending: true })
+    .limit(1);
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
-  return data;
+  const profile = (data?.[0] as Profile | undefined) ?? null;
+  return profile ? effectiveProfileColor(profile) : null;
 }
 
 export async function fetchCouple(coupleId: string): Promise<Couple | null> {
@@ -37,16 +45,21 @@ export async function fetchCouple(coupleId: string): Promise<Couple | null> {
   return data;
 }
 
-export async function fetchCategories(): Promise<Category[]> {
-  const { data, error } = await supabase.from("categories").select("*").order("created_at");
+export async function fetchCategories(_coupleId: string | null, _userId: string): Promise<Category[]> {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("created_at");
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
   return data ?? [];
 }
 
-export async function fetchEventsInRange(startISO: string, endISO: string): Promise<EventRow[]> {
+export async function fetchEventsInRange(startISO: string, endISO: string, coupleId: string | null, userId: string): Promise<EventRow[]> {
+  if (!coupleId) return [];
   const { data, error } = await supabase
     .from("events")
     .select("*")
+    .eq("couple_id", coupleId)
     .gte("starts_at", startISO)
     .lte("starts_at", endISO)
     .order("starts_at");
@@ -55,21 +68,33 @@ export async function fetchEventsInRange(startISO: string, endISO: string): Prom
 }
 
 export async function createEvent(payload: EventInsert) {
-  // Real events table does NOT have user_id — strip it
-  const { user_id, ...rest } = payload as any;
-  const safePayload = { ...rest };
-  console.log("[createEvent] Sending payload:", JSON.stringify(safePayload));
-  const { data, error } = await supabase.from("events").insert(safePayload as any).select().single();
-  if (error) { console.error("[createEvent] ERROR:", error.code, error.message, error.details); throw error; }
-  return data;
+  const { data, error } = await supabase.from("events").insert(payload as any).select().single();
+  if (!error) return data;
+
+  if (error.code === "PGRST204" || /user_id/i.test(`${error.message} ${error.details}`)) {
+    const { user_id, ...legacyPayload } = payload as any;
+    const legacy = await supabase.from("events").insert(legacyPayload as any).select().single();
+    if (legacy.error) { console.error("[createEvent] ERROR:", legacy.error.code, legacy.error.message, legacy.error.details); throw legacy.error; }
+    return legacy.data;
+  }
+
+  console.error("[createEvent] ERROR:", error.code, error.message, error.details);
+  throw error;
 }
 
 export async function updateEvent(id: string, payload: Partial<EventInsert>) {
-  // Strip user_id which doesn't exist in the real table
-  const { user_id, ...rest } = payload as any;
-  const { data, error } = await supabase.from("events").update(rest as any).eq("id", id).select().single();
-  if (error) { console.error("[updateEvent] ERROR:", error.code, error.message, error.details); throw error; }
-  return data;
+  const { data, error } = await supabase.from("events").update(payload as any).eq("id", id).select().single();
+  if (!error) return data;
+
+  if (error.code === "PGRST204" || /user_id/i.test(`${error.message} ${error.details}`)) {
+    const { user_id, ...legacyPayload } = payload as any;
+    const legacy = await supabase.from("events").update(legacyPayload as any).eq("id", id).select().single();
+    if (legacy.error) { console.error("[updateEvent] ERROR:", legacy.error.code, legacy.error.message, legacy.error.details); throw legacy.error; }
+    return legacy.data;
+  }
+
+  console.error("[updateEvent] ERROR:", error.code, error.message, error.details);
+  throw error;
 }
 
 export async function deleteEvent(id: string) {
@@ -130,9 +155,7 @@ export async function leaveCouple(userId: string) {
 }
 
 export async function updateProfile(userId: string, payload: Partial<Profile>) {
-  // Real profiles table only has: id, display_name, couple_id, avatar_url, created_at
-  // Strip phantom fields that don't exist
-  const { color, updated_at, ...safePayload } = payload as any;
+  const { updated_at, ...safePayload } = payload as any;
   console.log("[updateProfile] Sending:", JSON.stringify(safePayload));
   const { data, error } = await supabase.from("profiles").update(safePayload).eq("id", userId).select().single();
   if (error) { console.error("[updateProfile] ERROR:", error.code, error.message, error.details); throw error; }
@@ -140,10 +163,12 @@ export async function updateProfile(userId: string, payload: Partial<Profile>) {
 }
 
 /* ── To-dos ── */
-export async function fetchTodos(): Promise<Todo[]> {
+export async function fetchTodos(coupleId: string | null, _userId: string): Promise<Todo[]> {
+  if (!coupleId) return [];
   const { data, error } = await supabase
     .from("todos")
     .select("*")
+    .eq("couple_id", coupleId)
     .order("is_completed")
     .order("due_at", { ascending: true, nullsFirst: false })
     .order("priority", { ascending: false })
@@ -152,10 +177,12 @@ export async function fetchTodos(): Promise<Todo[]> {
   return data ?? [];
 }
 
-export async function fetchTodosWithCalendarInRange(startISO: string, endISO: string): Promise<Todo[]> {
+export async function fetchTodosWithCalendarInRange(startISO: string, endISO: string, coupleId: string | null, _userId: string): Promise<Todo[]> {
+  if (!coupleId) return [];
   const { data, error } = await supabase
     .from("todos")
     .select("*")
+    .eq("couple_id", coupleId)
     .eq("show_in_calendar", true)
     .not("due_at", "is", null)
     .gte("due_at", startISO)
@@ -166,19 +193,18 @@ export async function fetchTodosWithCalendarInRange(startISO: string, endISO: st
 }
 
 export async function createTodo(payload: TodoInsert) {
-  // Real todos table does NOT have user_id or duration_minutes — strip them
+  // The production todos table is couple-owned and does not expose these legacy fields.
   const { user_id, duration_minutes, ...rest } = payload as any;
   const safePayload = { ...rest, is_completed: false };
   console.log("[createTodo] Sending payload:", JSON.stringify(safePayload));
-  const { data, error } = await supabase.from("todos").insert(safePayload as any).select().single();
+  const { data, error } = await supabase.from("todos").insert(safePayload).select().single();
   if (error) { console.error("[createTodo] ERROR:", error.code, error.message, error.details); throw error; }
   return data;
 }
 
 export async function updateTodo(id: string, payload: TodoUpdate) {
-  // Strip fields that don't exist in the real table
-  const { user_id, duration_minutes, ...rest } = payload as any;
-  const { data, error } = await supabase.from("todos").update(rest as any).eq("id", id).select().single();
+  const { user_id, duration_minutes, ...safePayload } = payload as any;
+  const { data, error } = await supabase.from("todos").update(safePayload).eq("id", id).select().single();
   if (error) { console.error("[updateTodo] ERROR:", error.code, error.message, error.details); throw error; }
   return data;
 }
@@ -197,10 +223,12 @@ export async function deleteTodo(id: string) {
 }
 
 /* ── Rotinas predefinidas (recorrentes semanais) ── */
-export async function fetchRoutines(): Promise<Routine[]> {
+export async function fetchRoutines(coupleId: string | null, userId: string): Promise<Routine[]> {
+  if (!coupleId) return [];
   const { data, error } = await supabase
     .from("routines")
     .select("*")
+    .eq("couple_id", coupleId)
     .order("day_of_week")
     .order("start_time");
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
@@ -208,33 +236,52 @@ export async function fetchRoutines(): Promise<Routine[]> {
 }
 
 export async function createRoutine(payload: RoutineInsert) {
-  // Real routines table does NOT have user_id, category_id, is_shared, updated_at
-  const { user_id, category_id, is_shared, updated_at, ...rest } = payload as any;
-  console.log("[createRoutine] Sending payload:", JSON.stringify(rest));
-  const { data, error } = await supabase.from("routines").insert(rest as any).select().single();
-  if (error) { console.error("[createRoutine] ERROR:", error.code, error.message, error.details); throw error; }
-  return data;
+  const { data, error } = await supabase.from("routines").insert(payload as any).select().single();
+  if (!error) return data;
+
+  if (error.code === "PGRST204" || /user_id|is_shared|category_id|updated_at/i.test(`${error.message} ${error.details}`)) {
+    const { user_id, category_id, is_shared, updated_at, ...legacyPayload } = payload as any;
+    const legacy = await supabase.from("routines").insert(legacyPayload as any).select().single();
+    if (legacy.error) { console.error("[createRoutine] ERROR:", legacy.error.code, legacy.error.message, legacy.error.details); throw legacy.error; }
+    return legacy.data;
+  }
+
+  console.error("[createRoutine] ERROR:", error.code, error.message, error.details);
+  throw error;
 }
 
 export async function bulkCreateRoutines(payloads: RoutineInsert[]) {
   if (payloads.length === 0) return [];
-  // Strip phantom fields from each payload
-  const safePayloads = payloads.map(p => {
-    const { user_id, category_id, is_shared, updated_at, ...rest } = p as any;
-    return rest;
-  });
-  console.log("[bulkCreateRoutines] Sending payloads:", JSON.stringify(safePayloads));
-  const { data, error } = await supabase.from("routines").insert(safePayloads as any).select();
-  if (error) { console.error("[bulkCreateRoutines] ERROR:", error.code, error.message, error.details); throw error; }
-  return data ?? [];
+  const { data, error } = await supabase.from("routines").insert(payloads as any).select();
+  if (!error) return data ?? [];
+
+  if (error.code === "PGRST204" || /user_id|is_shared|category_id|updated_at/i.test(`${error.message} ${error.details}`)) {
+    const legacyPayloads = payloads.map(p => {
+      const { user_id, category_id, is_shared, updated_at, ...rest } = p as any;
+      return rest;
+    });
+    const legacy = await supabase.from("routines").insert(legacyPayloads as any).select();
+    if (legacy.error) { console.error("[bulkCreateRoutines] ERROR:", legacy.error.code, legacy.error.message, legacy.error.details); throw legacy.error; }
+    return legacy.data ?? [];
+  }
+
+  console.error("[bulkCreateRoutines] ERROR:", error.code, error.message, error.details);
+  throw error;
 }
 
 export async function updateRoutine(id: string, payload: RoutineUpdate) {
-  // Strip phantom fields
-  const { user_id, category_id, is_shared, updated_at, ...rest } = payload as any;
-  const { data, error } = await supabase.from("routines").update(rest as any).eq("id", id).select().single();
-  if (error) { console.error("[updateRoutine] ERROR:", error.code, error.message, error.details); throw error; }
-  return data;
+  const { data, error } = await supabase.from("routines").update(payload as any).eq("id", id).select().single();
+  if (!error) return data;
+
+  if (error.code === "PGRST204" || /user_id|is_shared|category_id|updated_at/i.test(`${error.message} ${error.details}`)) {
+    const { user_id, category_id, is_shared, updated_at, ...legacyPayload } = payload as any;
+    const legacy = await supabase.from("routines").update(legacyPayload as any).eq("id", id).select().single();
+    if (legacy.error) { console.error("[updateRoutine] ERROR:", legacy.error.code, legacy.error.message, legacy.error.details); throw legacy.error; }
+    return legacy.data;
+  }
+
+  console.error("[updateRoutine] ERROR:", error.code, error.message, error.details);
+  throw error;
 }
 
 export async function deleteRoutine(id: string) {
@@ -256,10 +303,14 @@ function toDateOnly(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export async function fetchRoutineExceptions(): Promise<RoutineException[]> {
-  const { data, error } = await (supabase as any)
+export async function fetchRoutineExceptions(coupleId: string | null, userId: string): Promise<RoutineException[]> {
+  // Keep this query simple to avoid RLS join edge-cases across environments.
+  // Exceptions are personal actions (skip only for a specific user/day).
+  const { data, error } = await supabase
     .from("routine_exceptions")
-    .select("*");
+    .select("*")
+    .eq("user_id", userId);
+
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
   return (data ?? []) as RoutineException[];
 }
@@ -297,10 +348,11 @@ export type HabitCheckin = {
   created_at: string;
 };
 
-export async function fetchHabits(): Promise<Habit[]> {
+export async function fetchHabits(coupleId: string | null, userId: string): Promise<Habit[]> {
   const { data, error } = await (supabase as any)
     .from("habits")
     .select("*")
+    .or(accessibleHabitFilter(coupleId, userId))
     .eq("is_active", true)
     .order("created_at");
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
@@ -308,16 +360,9 @@ export async function fetchHabits(): Promise<Habit[]> {
 }
 
 export async function createHabit(payload: Partial<Habit> & { user_id: string; title: string }) {
-  // Check auth state first
-  const { data: { session } } = await supabase.auth.getSession();
-  console.log("[createHabit] Auth state:", session ? `logged in as ${session.user.id}` : "NOT LOGGED IN");
-  if (!session) {
-    throw new Error("Você precisa estar logado para criar um hábito");
-  }
-  
   // Only send fields that actually exist in the habits table
   const safePayload = {
-    user_id: session.user.id, // Use the REAL auth user ID
+    user_id: payload.user_id,
     title: payload.title,
     color: payload.color || '#6366f1',
     icon: payload.icon || '🎯', // Required NOT NULL field
@@ -349,14 +394,14 @@ export async function deleteHabit(id: string) {
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
 }
 
-export async function fetchHabitCheckinsInRange(startDate: Date, endDate: Date): Promise<HabitCheckin[]> {
+export async function fetchHabitCheckinsInRange(startDate: Date, endDate: Date, coupleId: string | null, userId: string): Promise<HabitCheckin[]> {
   const { data, error } = await (supabase as any)
     .from("habit_checkins")
     .select("*")
     .gte("checkin_date", toDateOnly(startDate))
     .lte("checkin_date", toDateOnly(endDate));
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
-  return (data ?? []) as HabitCheckin[];
+  return (data ?? []) as any[];
 }
 
 export async function toggleHabitCheckin(habitId: string, userId: string, date: Date, currentCount: number) {
@@ -393,10 +438,11 @@ export type Reminder = {
   updated_at: string;
 };
 
-export async function fetchReminders(): Promise<Reminder[]> {
+export async function fetchReminders(userId: string): Promise<Reminder[]> {
   const { data, error } = await (supabase as any)
     .from("reminders")
     .select("*")
+    .eq("user_id", userId)
     .order("created_at", { ascending: false });
   if (error) { console.error("[Supabase Error]", error.code, error.message, error.details); throw error; }
   return (data ?? []) as Reminder[];
@@ -445,24 +491,33 @@ export async function uploadSticker(
   fileDataUrl: string,
   label: string
 ): Promise<Sticker> {
+  console.log("[Sticker] Starting upload for couple:", coupleId, "by user:", userId);
+  
   // Convert DataURL to Blob
   const res = await fetch(fileDataUrl);
   const blob = await res.blob();
+  console.log("[Sticker] Blob created, size:", blob.size, "type:", blob.type);
   
   const ext = blob.type.split('/')[1] || 'png';
   const fileName = `${coupleId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+  console.log("[Sticker] Target filename:", fileName);
   
   // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
     .from('stickers')
     .upload(fileName, blob, { upsert: false });
     
-  if (uploadError) throw uploadError;
+  if (uploadError) {
+    console.error("[Sticker] Storage upload error:", uploadError);
+    throw uploadError;
+  }
+  console.log("[Sticker] Uploaded to storage successfully");
   
   // Get public URL
   const { data: { publicUrl } } = supabase.storage
     .from('stickers')
     .getPublicUrl(fileName);
+  console.log("[Sticker] Public URL:", publicUrl);
     
   // Insert into stickers table
   const { data, error: dbError } = await (supabase as any)
@@ -476,7 +531,11 @@ export async function uploadSticker(
     .select()
     .single();
     
-  if (dbError) throw dbError;
+  if (dbError) {
+    console.error("[Sticker] Database insert error:", dbError);
+    throw dbError;
+  }
+  console.log("[Sticker] Database record created:", data.id);
   return data as Sticker;
 }
 

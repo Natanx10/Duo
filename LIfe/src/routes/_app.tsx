@@ -3,18 +3,49 @@ import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { BottomNav } from "@/components/BottomNav";
+import { useProfile } from "@/hooks/useData";
+import { supabase } from "@/integrations/supabase/client";
+import { defaultProfileColor } from "@/lib/profile-colors";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
 function AppLayout() {
-  const { session, loading } = useAuth();
+  const { session, user, loading: loadingAuth } = useAuth();
   const navigate = useNavigate();
 
+  const { data: profile, isLoading: loadingProfile, refetch: refetchProfile } = useProfile(user?.id);
+
   useEffect(() => {
-    if (!loading && !session) navigate({ to: "/auth", replace: true });
-  }, [session, loading, navigate]);
+    if (!loadingAuth && !session) navigate({ to: "/auth", replace: true });
+  }, [session, loadingAuth, navigate]);
+
+  // Auto-create profile if missing
+  useEffect(() => {
+    if (session && user && profile === null && !loadingProfile) {
+      console.log("[AppLayout] Profile not found for authenticated user, attempting auto-creation...");
+      const displayName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Eu";
+      
+      supabase
+        .from("profiles")
+        .insert({
+          id: user.id,
+          display_name: displayName,
+          color: defaultProfileColor(displayName, user.email),
+        } as any)
+        .then(({ error }) => {
+          if (error) {
+            console.error("[AppLayout] Failed to auto-create profile:", error.message);
+          } else {
+            console.log("[AppLayout] Profile successfully auto-created!");
+            refetchProfile();
+          }
+        });
+    }
+  }, [session, user, profile, loadingProfile, refetchProfile]);
+
+  const loading = loadingAuth || (session && loadingProfile);
 
   if (loading || !session) {
     return (

@@ -6,9 +6,13 @@ import { Check, Flame, Heart, Loader2, Plus, Target, Trash2 } from "lucide-react
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  createHabit, deleteHabit, fetchHabitCheckinsInRange, fetchHabits, fetchProfile,
-  toggleHabitCheckin, type Habit, type HabitCheckin,
+  createHabit, deleteHabit, toggleHabitCheckin,
+  type Habit,
 } from "@/lib/data";
+import { 
+  useHabits, useHabitCheckins, useProfile, useApiMutation, QUERY_KEYS 
+} from "@/hooks/useData";
+import { useQueryClient } from "@tanstack/react-query";
 import { PRESET_COLORS, WEEKDAY_LABELS } from "@/lib/calendar-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,35 +42,35 @@ function toDateOnly(d: Date) {
 
 function HabitsPage() {
   const { user } = useAuth();
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [checkins, setCheckins] = useState<HabitCheckin[]>([]);
-  const [coupleId, setCoupleId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [rewardingId, setRewardingId] = useState<string | null>(null);
-  const [globalReward, setGlobalReward] = useState(false);
+  const queryClient = useQueryClient();
   const ui = useUiPrefs();
   const today = useMemo(() => new Date(), []);
+  
+  const { data: profile } = useProfile(user?.id);
+  const coupleId = profile?.couple_id ?? null;
+  const { data: habits = [] } = useHabits(coupleId, user?.id);
+  const { data: checkins = [] } = useHabitCheckins(addDays(today, -30), today, coupleId, user?.id);
+  
+  const loading = !profile && !!user;
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const weekStart = useMemo(() => startOfWeek(today, { weekStartsOn: 0 }), [today]);
   const weekDays = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart]
   );
 
-  const reload = useCallback(async () => {
-    if (!user) return;
-    const [hs, p, cs] = await Promise.all([
-      fetchHabits(),
-      fetchProfile(user.id),
-      fetchHabitCheckinsInRange(addDays(today, -30), today),
-    ]);
-    setHabits(hs);
-    setCoupleId(p?.couple_id ?? null);
-    setCheckins(cs);
-    setLoading(false);
-  }, [user, today]);
+  const toggleMutation = useApiMutation(
+    ({ habitId, userId, date, checked }: { habitId: string; userId: string; date: Date; checked: boolean }) => 
+      toggleHabitCheckin(habitId, userId, date, checked ? 1 : 0),
+    [QUERY_KEYS.habitCheckins]
+  );
 
-  useEffect(() => { reload(); }, [reload]);
+  const deleteMutation = useApiMutation(
+    (id: string) => deleteHabit(id),
+    [QUERY_KEYS.habits]
+  );
 
   const dow = today.getDay();
   const todaysHabits = habits.filter((h) => h.days_of_week.includes(dow));
@@ -89,23 +93,13 @@ function HabitsPage() {
   }).length;
   const progressPct = todaysHabits.length === 0 ? 0 : (completedToday / todaysHabits.length) * 100;
 
-  const handleToggle = async (habit: Habit) => {
+  const handleToggle = async (habit: any) => {
     if (!user) return;
     const checked = isCheckedToday(habit.id);
-    if (!checked) {
-      setRewardingId(habit.id);
-      setGlobalReward(true);
-      window.setTimeout(() => {
-        setRewardingId(null);
-        setGlobalReward(false);
-      }, 3500);
-    }
     try {
-      await toggleHabitCheckin(habit.id, user.id, today, checked ? 1 : 0);
+      await toggleMutation.mutateAsync({ habitId: habit.id, userId: user.id, date: today, checked });
       if (!checked) toast.success(`✓ ${habit.title}`, { duration: 1500 });
-      reload();
     } catch (err) {
-      setRewardingId(null);
       toast.error(err instanceof Error ? err.message : "Erro");
     }
   };
@@ -113,9 +107,8 @@ function HabitsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir este hábito? O histórico também será removido.")) return;
     try {
-      await deleteHabit(id);
+      await deleteMutation.mutateAsync(id);
       toast.success("Hábito excluído");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -163,15 +156,6 @@ function HabitsPage() {
               <Target className="h-6 w-6" />
             </div>
           </div>
-          {globalReward && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none">
-              <dotlottie-wc
-                src="https://lottie.host/9229d93c-d22a-4bd4-8d1e-325ccd7b3f7d/IGrMrsPipd.lottie"
-                autoplay
-                style={{ width: "140px", height: "140px" }}
-              ></dotlottie-wc>
-            </div>
-          )}
           <div className="mt-3">
             <Progress value={progressPct} className="h-2 bg-white/20" />
           </div>
@@ -326,7 +310,10 @@ function HabitsPage() {
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         coupleId={coupleId}
-        onCreated={reload}
+        onCreated={() => {
+          setDialogOpen(false);
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.habits });
+        }}
       />
     </div>
   );
@@ -362,6 +349,7 @@ function NewHabitDialog({
         title: title.trim(),
         color,
         days_of_week: days,
+        is_shared: isShared,
       } as any);
       toast.success("Hábito criado ✨");
       setTitle(""); setColor(PRESET_COLORS[0]); setDays([0, 1, 2, 3, 4, 5, 6]); setIsShared(false);

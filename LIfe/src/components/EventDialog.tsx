@@ -81,11 +81,13 @@ export function EventDialog({
       setIsShared(event.is_shared);
       setPriority(event.priority);
       // Busca se já existe lembrete para este evento
-      fetchReminders().then(rems => {
-        const found = rems.find(r => r.event_id === event.id);
-        setExistingReminder(found || null);
-        setShouldNotify(!!found);
-      });
+      if (user?.id) {
+        fetchReminders(user.id).then(rems => {
+          const found = rems.find(r => r.event_id === event.id);
+          setExistingReminder(found || null);
+          setShouldNotify(!!found);
+        });
+      }
     } else {
       const base = defaultDate ? new Date(defaultDate) : new Date();
       base.setHours(defaultHour ?? 9, 0, 0, 0);
@@ -97,7 +99,7 @@ export function EventDialog({
       setStartsAt(toLocalInput(base));
       setEndsAt(toLocalInput(end));
       setCategoryId("none");
-      setIsShared(!!coupleId);
+      setIsShared(false);
       setPriority(1);
       setShouldNotify(false);
       setExistingReminder(null);
@@ -111,7 +113,7 @@ export function EventDialog({
     try {
       const payload = {
         user_id: user.id,
-        couple_id: isShared ? coupleId : null,
+        couple_id: coupleId,
         category_id: categoryId === "none" ? null : categoryId,
         title: title.trim(),
         description: description.trim() || null,
@@ -119,6 +121,7 @@ export function EventDialog({
         starts_at: new Date(startsAt).toISOString(),
         ends_at: new Date(endsAt).toISOString(),
         priority,
+        is_shared: isShared,
       } as any;
       let savedEvent: EventRow;
       if (event) {
@@ -135,7 +138,7 @@ export function EventDialog({
         const remindAt = new Date(start.getTime() - 15 * 60_000).toISOString(); // 15min antes
         const remPayload = {
           user_id: user.id,
-          title: `Lembrete: ${title}`,
+          title: `Duo: ${title.trim()}`,
           event_id: savedEvent.id,
           remind_at: remindAt,
           is_active: true,
@@ -245,7 +248,7 @@ export function EventDialog({
             <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
               <div>
                 <Label htmlFor="ev-shared" className="cursor-pointer">Atividade em casal</Label>
-                <p className="text-xs text-muted-foreground">Aparece para os dois e ocupa as duas colunas</p>
+                <p className="text-xs text-muted-foreground">Aparece para os dois no lado esquerdo e direito da agenda</p>
               </div>
               <Switch id="ev-shared" checked={isShared} onCheckedChange={setIsShared} />
             </div>

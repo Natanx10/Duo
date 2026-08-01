@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { joinCoupleByCode } from "@/lib/data";
+import { defaultProfileColor } from "@/lib/profile-colors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -68,7 +69,10 @@ function AuthPage() {
           password,
           options: {
             emailRedirectTo: `${window.location.origin}/dashboard${invite ? `?invite=${invite}` : ""}`,
-            data: { display_name: name || email.split("@")[0] },
+            data: {
+              display_name: name || email.split("@")[0],
+              color: defaultProfileColor(name || email.split("@")[0], email),
+            },
           },
         });
         if (error) throw error;
@@ -85,6 +89,26 @@ function AuthPage() {
     }
   };
 
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error("Digite seu email acima para receber o link de recuperacao");
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      toast.success("Enviamos um link de recuperacao para seu email");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Nao foi possivel enviar o email");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10">
       {/* Decorative blobs */}
@@ -94,18 +118,19 @@ function AuthPage() {
       <div className="relative z-10 w-full max-w-sm animate-slide-up">
         <div className="mb-8 flex flex-col items-center text-center">
           {(() => {
-            const loginActive = ui.heroTargets.includes("login");
+            const loginIllustration = ui.heroTargetIllustrations.login ?? ui.illustration;
+            const loginActive = Boolean(ui.heroTargetIllustrations.login);
             const fallbackSrc = couplePardoBranca;
             const src = loginActive
               ? resolveHeroImage({
-                  sticker: ui.sticker,
-                  illustration: ui.illustration,
+                  sticker: "none",
+                  illustration: loginIllustration,
                   customStickers: ui.customStickers,
                   customIllustrations: ui.customIllustrations,
                   builtInIllustrations: { "pardo-branca": couplePardoBranca, "couple": couplePardoBranca } as any,
                 })
               : fallbackSrc;
-            const cropS = loginActive ? activeIllustrationCropStyle(ui.illustration, ui.customIllustrations) : { objectFit: "contain" as const, objectPosition: "center" as const };
+            const cropS = loginActive ? activeIllustrationCropStyle(loginIllustration, ui.customIllustrations) : { objectFit: "contain" as const, objectPosition: "center" as const };
             const base = 160;
             const px = Math.round(base * ui.heroScale);
             return (
@@ -210,6 +235,16 @@ function AuthPage() {
             <Button type="submit" disabled={busy} className="h-11 w-full gradient-primary text-primary-foreground hover:opacity-95">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "signin" ? "Entrar" : "Criar conta"}
             </Button>
+            {mode === "signin" && (
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                disabled={busy}
+                className="block w-full text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
+              >
+                Esqueci minha senha
+              </button>
+            )}
           </form>
         </div>
 

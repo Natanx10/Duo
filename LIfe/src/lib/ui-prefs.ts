@@ -5,7 +5,7 @@
 
 export type AnimationStyle =
   | "float" | "fade" | "gentle" | "pulse" | "shimmer"
-  | "wave" | "particles" | "romantic"
+  | "wave" | "particles"
   | "none";
 
 export const ANIMATION_OPTIONS: { value: AnimationStyle; label: string; description: string }[] = [
@@ -16,13 +16,12 @@ export const ANIMATION_OPTIONS: { value: AnimationStyle; label: string; descript
   { value: "shimmer",   label: "Brilho",    description: "Reflexo sutil" },
   { value: "wave",      label: "Onda",      description: "Linhas onduladas internas" },
   { value: "particles", label: "Partículas",description: "Partículas suspensas" },
-  { value: "romantic",  label: "Romântico", description: "Pulsar de coração" },
   { value: "none",      label: "Nenhuma",   description: "Sem animação" },
 ];
 
 /** Para tarefas/eventos importantes e itens do casal: somente novas opções + nenhuma. */
 export const ITEM_ANIMATION_OPTIONS = ANIMATION_OPTIONS.filter((o) =>
-  ["wave", "particles", "romantic", "pulse", "shimmer", "none"].includes(o.value)
+  ["wave", "particles", "pulse", "shimmer", "none"].includes(o.value)
 );
 
 const KEYS = {
@@ -55,17 +54,18 @@ const KEYS = {
   // Ilustração — escala (50–150%) e onde aplicar (hero/empty/login)
   heroScale:        "duo:hero-scale",
   heroTargets:      "duo:hero-targets",
+  heroTargetIllustrations: "duo:hero-target-illustrations",
   // Built-ins ocultadas pelo usuário ("excluídas" da seleção)
   hiddenBuiltIns:   "duo:illustration-hidden",
 } as const;
 
 export const MAX_CUSTOM_ILLUSTRATIONS = 10;
 
-export type HeroTarget = "hero" | "empty" | "login";
+export type HeroTarget = "hero" | "next" | "empty" | "login";
 export const HERO_SCALE_MIN = 0.5;
 export const HERO_SCALE_MAX = 1.5;
 export const HERO_SCALE_DEFAULT = 1;
-const ALL_HERO_TARGETS: HeroTarget[] = ["hero", "empty", "login"];
+const ALL_HERO_TARGETS: HeroTarget[] = ["hero", "next", "empty", "login"];
 
 export function loadHeroScale(): number {
   if (typeof window === "undefined") return HERO_SCALE_DEFAULT;
@@ -91,6 +91,35 @@ export function loadHeroTargets(): HeroTarget[] {
 export function saveHeroTargets(list: HeroTarget[]) {
   window.localStorage.setItem(KEYS.heroTargets, JSON.stringify(list));
   notify();
+}
+
+export type HeroTargetIllustrations = Partial<Record<HeroTarget, IllustrationId>>;
+
+export function loadHeroTargetIllustrations(): HeroTargetIllustrations {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = window.localStorage.getItem(KEYS.heroTargetIllustrations);
+    if (!raw) return {};
+    const obj = JSON.parse(raw);
+    if (!obj || typeof obj !== "object") return {};
+    return obj as HeroTargetIllustrations;
+  } catch { return {}; }
+}
+
+export function saveHeroTargetIllustrations(map: HeroTargetIllustrations) {
+  window.localStorage.setItem(KEYS.heroTargetIllustrations, JSON.stringify(map));
+  notify();
+}
+
+export function setHeroTargetIllustration(target: HeroTarget, id: IllustrationId | null) {
+  const map = loadHeroTargetIllustrations();
+  if (id) map[target] = id;
+  else delete map[target];
+  saveHeroTargetIllustrations(map);
+}
+
+export function illustrationForTarget(target: HeroTarget, fallback: IllustrationId): IllustrationId {
+  return loadHeroTargetIllustrations()[target] ?? fallback;
 }
 
 export type BuiltInIllustrationId =
@@ -290,6 +319,16 @@ export function removeCustomIllustration(id: string) {
   if (loadIllustration() === (`custom:${id}` as IllustrationId)) {
     saveIllustration(DEFAULTS.illustration);
   }
+  const ref = `custom:${id}` as IllustrationId;
+  const targets = loadHeroTargetIllustrations();
+  let changed = false;
+  for (const target of Object.keys(targets) as HeroTarget[]) {
+    if (targets[target] === ref) {
+      delete targets[target];
+      changed = true;
+    }
+  }
+  if (changed) saveHeroTargetIllustrations(targets);
 }
 
 /* ── Hidden built-in illustrations (user "deleted" them from the picker) ── */
@@ -466,7 +505,6 @@ export function animClass(style: AnimationStyle): string {
     case "shimmer":   return "anim-shimmer";
     case "wave":      return "anim-wave";
     case "particles": return "anim-particles";
-    case "romantic":  return "anim-romantic";
     case "none":      return "";
   }
 }
@@ -480,16 +518,16 @@ export function particleVars(intensity: number, density: number, brightness = 70
   // brightness 0–100 → saturate 0.4–1.4 + opacity multiplier 0.45–1
   const sat = (0.4 + (brightness / 100) * 1.0).toFixed(2);
   const bMult = (0.45 + (brightness / 100) * 0.55).toFixed(2);
-  const res: React.CSSProperties = {
-    ["--particles-opacity" as never]: String(op),
-    ["--particles-tile" as never]: `${tile}px`,
-    ["--particles-saturate" as never]: sat,
-    ["--particles-brightness-mult" as never]: bMult,
+  const res: React.CSSProperties & Record<string, string> = {
+    "--particles-opacity": String(op),
+    "--particles-tile": `${tile}px`,
+    "--particles-saturate": sat,
+    "--particles-brightness-mult": bMult,
   };
   if (color) {
-    res["--p-color-1" as never] = color;
-    res["--p-color-2" as never] = color;
-    res["--p-color-3" as never] = color;
+    res["--p-color-1"] = color;
+    res["--p-color-2"] = color;
+    res["--p-color-3"] = color;
   }
   return res;
 }
@@ -537,6 +575,8 @@ export function useUiPrefs() {
     itemOverrides: loadItemOverrides(),
     heroScale: loadHeroScale(),
     heroTargets: loadHeroTargets(),
+    heroTargetIllustrations: loadHeroTargetIllustrations(),
     hiddenBuiltIns: loadHiddenBuiltIns(),
   };
 }
+

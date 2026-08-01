@@ -21,8 +21,8 @@ export const TOTAL_HOURS = DAY_END_HOUR - DAY_START_HOUR;
 /** Density modes that control vertical spacing of the day/week grid. */
 export type CalendarDensity = "compact" | "comfortable";
 export const DENSITY_HOUR_HEIGHT: Record<CalendarDensity, number> = {
-  compact: 44,
-  comfortable: 64,
+  compact: 50,
+  comfortable: 72,
 };
 
 const DENSITY_STORAGE_KEY = "duo:calendar-density";
@@ -112,8 +112,14 @@ export function routineHeight(startTime: string, endTime: string, hourHeight: nu
 }
 
 /** Filter routines applicable to a given date (by weekday). */
-export function routinesForDay<T extends { day_of_week: number }>(routines: T[], day: Date): T[] {
-  return routines.filter((r) => r.day_of_week === day.getDay());
+export function routinesForDay<T extends { day_of_week: number | string | null }>(routines: T[], day: Date): T[] {
+  const weekday = day.getDay();
+  return routines.filter((r) => {
+    const raw = Number(r.day_of_week);
+    if (!Number.isFinite(raw)) return false;
+    const normalized = raw === 7 ? 0 : raw;
+    return normalized === weekday;
+  });
 }
 
 /** Format "HH:MM:SS" into "HH:MM". */

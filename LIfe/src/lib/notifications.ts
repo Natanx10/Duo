@@ -1,28 +1,31 @@
 /**
- * Web Notifications (push local) — funciona no app publicado em HTTPS,
- * com permissão concedida pelo usuário.
+ * Web Notifications (local push) for the published HTTPS app.
  *
- * Estratégia híbrida:
- * 1. setTimeout para notificações enquanto a aba está aberta
- * 2. Service Worker showNotification para melhor compatibilidade
- * 3. Persiste lembretes no localStorage para re-agendar ao reabrir a aba
- * 4. Usa visibilitychange para reagendar quando a aba volta ao foco
+ * Hybrid strategy:
+ * 1. setTimeout for notifications while the app is open.
+ * 2. Service Worker showNotification for better background support.
+ * 3. Persist reminders in localStorage to reschedule after reload.
+ * 4. Reschedule when the tab becomes visible again.
  */
 
 export type ScheduledReminder = {
   id: string;
   title: string;
   body?: string;
-  /** "HH:MM" 24h, hora local */
+  /** "HH:MM" 24h, local time */
   remindTime?: string | null;
-  /** dias 0..6 (dom..sáb). Se vazio/undefined => todos os dias */
+  /** days 0..6 (sun..sat). Empty/undefined means every day */
   daysOfWeek?: number[] | null;
-  /** ISO datetime (uso single-shot) */
+  /** ISO datetime for one-shot reminders */
   remindAt?: string | null;
 };
 
 const TIMERS = new Map<string, number>();
 const STORAGE_KEY = "duo:scheduled-reminders";
+const NOTIFICATION_ICON = "/pwa-192x192.png";
+const NOTIFICATION_BADGE = "/pwa-192x192.png";
+const DEFAULT_NOTIFICATION_TITLE = "Lembrete do Duo";
+const DEFAULT_NOTIFICATION_BODY = "Você tem um compromisso agendado.";
 
 export function isNotificationSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
@@ -48,7 +51,7 @@ export async function requestNotificationPermission(): Promise<NotificationPermi
 
 export async function subscribeToPushNotifications(userId: string) {
   if (!isNotificationSupported() || !("serviceWorker" in navigator)) return null;
-  
+
   try {
     const permission = await requestNotificationPermission();
     if (permission !== "granted") return null;
@@ -56,13 +59,12 @@ export async function subscribeToPushNotifications(userId: string) {
     const registration = await navigator.serviceWorker.ready;
     const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
     if (!publicKey) {
-      console.warn("VAPID public key não configurada.");
+      console.warn("VAPID public key nao configurada.");
       return null;
     }
 
-    // Convert Base64URL string to Uint8Array
-    const padding = '='.repeat((4 - publicKey.length % 4) % 4);
-    const base64 = (publicKey + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const padding = "=".repeat((4 - publicKey.length % 4) % 4);
+    const base64 = (publicKey + padding).replace(/-/g, "+").replace(/_/g, "/");
     const rawData = window.atob(base64);
     const outputArray = new Uint8Array(rawData.length);
     for (let i = 0; i < rawData.length; ++i) {
@@ -71,7 +73,7 @@ export async function subscribeToPushNotifications(userId: string) {
 
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: outputArray
+      applicationServerKey: outputArray,
     });
 
     const { savePushSubscription } = await import("./data");
@@ -113,29 +115,40 @@ export function clearAllScheduledReminders() {
 
 async function fire(reminder: ScheduledReminder) {
   if (!isNotificationSupported() || Notification.permission !== "granted") return;
-  
+
+  const title = reminder.title?.trim() || DEFAULT_NOTIFICATION_TITLE;
+  const body = reminder.body?.trim() || DEFAULT_NOTIFICATION_BODY;
+
   try {
-    // Prefer Service Worker notification (works even when tab is in background)
     if ("serviceWorker" in navigator) {
       const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(reminder.title, {
-        body: reminder.body ?? "Lembrete do Duo 💜",
+      await registration.showNotification(title, {
+        body,
         tag: `reminder-${reminder.id}`,
-        icon: "/pwa-192x192.png",
-        badge: "/pwa-192x192.png",
-        vibrate: [200, 100, 200],
+        icon: NOTIFICATION_ICON,
+        badge: NOTIFICATION_BADGE,
+        vibrate: [120, 60, 120],
         requireInteraction: true,
-      });
+        renotify: true,
+        silent: false,
+        timestamp: Date.now(),
+        data: {
+          reminderId: reminder.id,
+          url: "/calendar",
+        },
+      } as NotificationOptions);
       return;
     }
   } catch {
-    // fallback to basic Notification
+    // Fallback to basic Notification below.
   }
-  
+
   try {
-    const n = new Notification(reminder.title, {
-      body: reminder.body ?? "Lembrete do Duo 💜",
+    const n = new Notification(title, {
+      body,
       tag: `reminder-${reminder.id}`,
+      icon: NOTIFICATION_ICON,
+      badge: NOTIFICATION_BADGE,
       silent: false,
     });
     window.setTimeout(() => n.close(), 15_000);
@@ -144,21 +157,23 @@ async function fire(reminder: ScheduledReminder) {
   }
 }
 
-/** Persist reminders to localStorage so they survive page reloads */
 function persistReminders(reminders: ScheduledReminder[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
-/** Load persisted reminders from localStorage */
 function loadPersistedReminders(): ScheduledReminder[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const arr = JSON.parse(raw);
     return Array.isArray(arr) ? arr : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 export function scheduleReminder(reminder: ScheduledReminder) {
@@ -177,7 +192,6 @@ export function scheduleReminder(reminder: ScheduledReminder) {
   const delay = Math.min(target.getTime() - Date.now(), 2_000_000_000);
   const handle = window.setTimeout(() => {
     fire(reminder);
-    // se for recorrente (tem remindTime), reagenda
     if (reminder.remindTime) scheduleReminder(reminder);
     else clearScheduledReminder(reminder.id);
   }, delay);
@@ -190,7 +204,6 @@ export function scheduleAll(reminders: ScheduledReminder[]) {
   for (const r of reminders) scheduleReminder(r);
 }
 
-/** Re-schedule reminders from localStorage (call on page load/visibility change) */
 export function rescheduleFromStorage() {
   const reminders = loadPersistedReminders();
   if (reminders.length > 0) {
@@ -199,7 +212,6 @@ export function rescheduleFromStorage() {
   }
 }
 
-// Auto re-schedule when tab becomes visible again
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") {

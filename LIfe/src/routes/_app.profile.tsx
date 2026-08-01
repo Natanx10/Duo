@@ -2,16 +2,20 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { Bell, ChevronDown, Clock, Copy, Heart, ImageIcon, Loader2, LogOut, Moon, Pencil, Plus, RefreshCw, Share2, Sliders, Sparkles, Sun, Tag, Trash2, Unlink, User as UserIcon, Users } from "lucide-react";
 import { getTheme, setTheme, type Theme } from "@/lib/theme";
+import { defaultProfileColor, isLaysllaProfile, LAYSLLA_PROFILE_COLOR } from "@/lib/profile-colors";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import {
   createCategory, createCouple, createReminder, deleteCategory, deleteReminder,
-  deleteRoutine,
-  fetchCategories, fetchCouple, fetchPartnerProfile, fetchProfile, fetchReminders,
-  fetchRoutines, joinCoupleByCode, leaveCouple, updateProfile,
+  deleteRoutine, joinCoupleByCode, leaveCouple, updateProfile,
   uploadSticker, deleteSticker,
-  type Category, type Couple, type Profile, type Reminder, type Routine,
 } from "@/lib/data";
+import { 
+  useProfile, usePartnerProfile, useCouple, useCategories, 
+  useRoutines, useReminders, useStickers, useApiMutation, QUERY_KEYS 
+} from "@/hooks/useData";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   formatTime, generateInviteCode, loadCalendarDensity, PRESET_COLORS,
   saveCalendarDensity, WEEKDAY_FULL, WEEKDAY_LABELS, type CalendarDensity,
@@ -20,17 +24,17 @@ import {
   ANIMATION_OPTIONS, ITEM_ANIMATION_OPTIONS, ILLUSTRATION_OPTIONS,
   STICKER_OPTIONS, PARTICLE_PRESETS, type ParticlePreset,
   type AnimationStyle, type IllustrationId, type BuiltInIllustrationId,
-  type CustomIllustration, type HeroTarget,
+  type CustomIllustration, type HeroTarget, type HeroTargetIllustrations,
   loadImportantTaskAnim, loadImportantEventAnim, loadCoupleAnim,
   loadIllustration, loadCustomIllustrations,
   loadWeekColWidth, loadItemPadding,
   loadParticlesImportantIntensity, loadParticlesImportantDensity, loadParticlesImportantBrightness,
   loadParticlesCoupleIntensity, loadParticlesCoupleDensity, loadParticlesCoupleBrightness,
-  loadHeroScale, loadHeroTargets, saveHeroScale, saveHeroTargets,
+  loadHeroScale, loadHeroTargets, loadHeroTargetIllustrations, saveHeroScale, setHeroTargetIllustration,
   loadHiddenBuiltIns, hideBuiltInIllustration, restoreBuiltInIllustration,
   HERO_SCALE_MIN, HERO_SCALE_MAX, MAX_CUSTOM_ILLUSTRATIONS,
   saveImportantTaskAnim, saveImportantEventAnim, saveCoupleAnim,
-  saveIllustration,
+  saveIllustration, saveCustomIllustrations,
   saveWeekColWidth, saveItemPadding,
   saveParticlesImportantIntensity, saveParticlesImportantDensity, saveParticlesImportantBrightness,
   saveParticlesCoupleIntensity, saveParticlesCoupleDensity, saveParticlesCoupleBrightness,
@@ -53,7 +57,6 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { RoutineDialog } from "@/components/RoutineDialog";
-import { RoutineTemplatesDialog } from "@/components/RoutineTemplatesDialog";
 
 
 
@@ -65,12 +68,35 @@ export const Route = createFileRoute("/_app/profile")({
 
 function ProfilePage() {
   const { user, signOut } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [partner, setPartner] = useState<Profile | null>(null);
-  const [couple, setCouple] = useState<Couple | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [routines, setRoutines] = useState<Routine[]>([]);
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const queryClient = useQueryClient();
+  
+  const { 
+    data: profile, 
+    isLoading: loadingProfile, 
+    error: profileError, 
+    status: profileStatus,
+    refetch: refetchProfile 
+  } = useProfile(user?.id);
+  const coupleId = profile?.couple_id ?? null;
+  const { data: categories = [] } = useCategories(coupleId, user?.id);
+  const { data: routines = [] } = useRoutines(coupleId, user?.id);
+  const { data: reminders = [] } = useReminders(user?.id);
+  const { 
+    data: couple,
+    isLoading: loadingCouple,
+    error: coupleError,
+    status: coupleStatus,
+    refetch: refetchCouple
+  } = useCouple(profile?.couple_id);
+  const { 
+    data: partner,
+    isLoading: loadingPartner,
+    error: partnerError,
+    status: partnerStatus,
+    refetch: refetchPartner
+  } = usePartnerProfile(profile?.couple_id, user?.id);
+  const { data: dbStickers = [] } = useStickers(profile?.couple_id);
+
   const [density, setDensity] = useState<CalendarDensity>("compact");
   const [animImportantTask, setAnimImportantTask] = useState<AnimationStyle>("none");
   const [animImportantEvent, setAnimImportantEvent] = useState<AnimationStyle>("none");
@@ -87,16 +113,47 @@ function ProfilePage() {
   const [customIllustrations, setCustomIllustrations] = useState<CustomIllustration[]>([]);
   const [hiddenBuiltIns, setHiddenBuiltIns] = useState<BuiltInIllustrationId[]>([]);
   const [heroScale, setHeroScale] = useState<number>(1);
-  const [heroTargets, setHeroTargets] = useState<HeroTarget[]>(["hero", "empty", "login"]);
-  const [loading, setLoading] = useState(true);
+  const [heroTargets, setHeroTargets] = useState<HeroTarget[]>(["hero", "next", "empty", "login"]);
+  const [heroTargetIllustrations, setHeroTargetIllustrations] = useState<HeroTargetIllustrations>({});
+  
+  const loading = !profile && !!user;
+  
   const [name, setName] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [joinCode, setJoinCode] = useState("");
   const [busy, setBusy] = useState(false);
+  const [creatingProfile, setCreatingProfile] = useState(false);
   const [routineDialogOpen, setRoutineDialogOpen] = useState(false);
-  const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
+  const [editingRoutine, setEditingRoutine] = useState<any | null>(null);
   const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
   const [theme, setAppTheme] = useState<Theme>("system");
+
+  const handleCreateProfileManually = async () => {
+    if (!user) return;
+    setCreatingProfile(true);
+    try {
+      const displayName = user.user_metadata?.display_name || user.email?.split("@")[0] || "Eu";
+      const { error } = await supabase.from("profiles").insert({
+        id: user.id,
+        display_name: displayName,
+        color: defaultProfileColor(displayName, user.email),
+      } as any);
+      if (error) throw error;
+      toast.success("Perfil criado com sucesso! 🎉");
+      refetchProfile();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro ao criar perfil. Verifique as RLS.");
+    } finally {
+      setCreatingProfile(false);
+    }
+  };
+
+  useEffect(() => {
+    if (profile) {
+      setName(profile.display_name || "");
+      setColor(isLaysllaProfile(profile.display_name) ? LAYSLLA_PROFILE_COLOR : (profile.color || PRESET_COLORS[0]));
+    }
+  }, [profile]);
 
   const APP_VERSION = "1.0.8-stable";
 
@@ -120,6 +177,7 @@ function ProfilePage() {
     setHiddenBuiltIns(loadHiddenBuiltIns());
     setHeroScale(loadHeroScale());
     setHeroTargets(loadHeroTargets());
+    setHeroTargetIllustrations(loadHeroTargetIllustrations());
     const onPrefs = () => {
       setCustomIllustrations(loadCustomIllustrations());
       setHiddenBuiltIns(loadHiddenBuiltIns());
@@ -132,10 +190,34 @@ function ProfilePage() {
       setPartCplBri(loadParticlesCoupleBrightness());
       setHeroScale(loadHeroScale());
       setHeroTargets(loadHeroTargets());
+      setHeroTargetIllustrations(loadHeroTargetIllustrations());
     };
     window.addEventListener("duo:ui-prefs-change", onPrefs);
     return () => window.removeEventListener("duo:ui-prefs-change", onPrefs);
   }, []);
+
+  // Sincroniza figurinhas do banco com o estado local/localStorage
+  useEffect(() => {
+    if (dbStickers.length > 0) {
+      const illustrations = dbStickers.map(s => ({
+        id: s.id,
+        label: s.label || "Figurinha",
+        dataUrl: s.image_url,
+        crop: { zoom: 1, offsetX: 0, offsetY: 0 }
+      }));
+      const existing = JSON.parse(localStorage.getItem("duo:custom-illustrations") || "[]");
+      const dbIds = new Set(illustrations.map((ill) => ill.id));
+      const merged = [
+        ...existing.filter((ex: any) => ex?.id && !dbIds.has(ex.id)),
+        ...illustrations.map(ill => {
+          const ex = existing.find((e: any) => e.id === ill.id);
+          if (ex && ex.crop) return { ...ill, crop: ex.crop };
+          return ill;
+        }),
+      ];
+      saveCustomIllustrations(merged);
+    }
+  }, [dbStickers]);
 
   const handleDensityChange = (d: CalendarDensity) => {
     setDensity(d);
@@ -177,35 +259,40 @@ function ProfilePage() {
   };
 
 
-  const reload = useCallback(async () => {
-    if (!user) return;
-    const [p, cats, rts, rems] = await Promise.all([
-      fetchProfile(user.id),
-      fetchCategories(),
-      fetchRoutines(),
-      fetchReminders(),
-    ]);
-    setProfile(p);
-    setCategories(cats);
-    setRoutines(rts);
-    setReminders(rems);
-    setName(p?.display_name ?? "");
-    setColor(p?.color ?? PRESET_COLORS[0]);
-    if (p?.couple_id) {
-      const [c, partnerP] = await Promise.all([
-        fetchCouple(p.couple_id),
-        fetchPartnerProfile(p.couple_id, user.id),
-      ]);
-      setCouple(c);
-      setPartner(partnerP);
-    } else {
-      setCouple(null);
-      setPartner(null);
-    }
-    setLoading(false);
-  }, [user]);
+  const updateProfileMutation = useApiMutation(
+    (payload: any) => updateProfile(user!.id, payload),
+    [QUERY_KEYS.profile(user?.id || "")]
+  );
 
-  useEffect(() => { reload(); }, [reload]);
+  const createCoupleMutation = useApiMutation(
+    ({ userId, code }: { userId: string; code: string }) => createCouple(userId, code),
+    [QUERY_KEYS.profile(user?.id || ""), QUERY_KEYS.couple("")]
+  );
+
+  const joinCoupleMutation = useApiMutation(
+    ({ code, userId }: { code: string; userId: string }) => joinCoupleByCode(code, userId),
+    [QUERY_KEYS.profile(user?.id || ""), QUERY_KEYS.couple("")]
+  );
+
+  const leaveCoupleMutation = useApiMutation(
+    (userId: string) => leaveCouple(userId),
+    [QUERY_KEYS.profile(user?.id || ""), QUERY_KEYS.couple(""), QUERY_KEYS.partnerProfile("")]
+  );
+
+  const deleteCategoryMutation = useApiMutation(
+    (id: string) => deleteCategory(id),
+    [QUERY_KEYS.categories]
+  );
+
+  const deleteRoutineMutation = useApiMutation(
+    (id: string) => deleteRoutine(id),
+    [QUERY_KEYS.routines]
+  );
+
+  const deleteReminderMutation = useApiMutation(
+    (id: string) => deleteReminder(id),
+    [QUERY_KEYS.reminders]
+  );
 
   // Agenda notificações push locais sempre que a lista de lembretes mudar
   // (e a permissão estiver concedida).
@@ -218,6 +305,7 @@ function ProfilePage() {
         .map((r) => ({
           id: r.id,
           title: r.title,
+          body: "Toque para abrir sua agenda.",
           remindTime: r.remind_time,
           daysOfWeek: r.days_of_week,
           remindAt: r.remind_at,
@@ -228,9 +316,8 @@ function ProfilePage() {
   const handleDeleteCategory = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir esta categoria?")) return;
     try {
-      await deleteCategory(id);
+      await deleteCategoryMutation.mutateAsync(id);
       toast.success("Categoria removida");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -239,9 +326,8 @@ function ProfilePage() {
   const handleDeleteRoutine = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir esta rotina?")) return;
     try {
-      await deleteRoutine(id);
+      await deleteRoutineMutation.mutateAsync(id);
       toast.success("Rotina removida");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -251,10 +337,10 @@ function ProfilePage() {
     if (!user) return;
     setBusy(true);
     try {
-      // profiles table only has display_name (no color column)
-      await updateProfile(user.id, { display_name: name } as any);
+      const nextColor = isLaysllaProfile(name) ? LAYSLLA_PROFILE_COLOR : color;
+      await updateProfileMutation.mutateAsync({ display_name: name, color: nextColor });
+      setColor(nextColor);
       toast.success("Perfil salvo ✨");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     } finally { setBusy(false); }
@@ -265,9 +351,8 @@ function ProfilePage() {
     setBusy(true);
     try {
       const code = generateInviteCode();
-      await createCouple(user.id, code);
+      await createCoupleMutation.mutateAsync({ userId: user.id, code });
       toast.success("Casal criado! Compartilhe o código.");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     } finally { setBusy(false); }
@@ -277,10 +362,9 @@ function ProfilePage() {
     if (!user || !joinCode.trim()) return;
     setBusy(true);
     try {
-      await joinCoupleByCode(joinCode.trim(), user.id);
+      await joinCoupleMutation.mutateAsync({ code: joinCode.trim(), userId: user.id });
       toast.success("Vocês estão conectados 💜");
       setJoinCode("");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Código inválido");
     } finally { setBusy(false); }
@@ -290,9 +374,8 @@ function ProfilePage() {
     if (!user) return;
     setBusy(true);
     try {
-      await leaveCouple(user.id);
+      await leaveCoupleMutation.mutateAsync(user.id);
       toast.success("Você saiu do casal");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     } finally { setBusy(false); }
@@ -328,9 +411,8 @@ function ProfilePage() {
   const handleDeleteReminder = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este lembrete?")) return;
     try {
-      await deleteReminder(id);
+      await deleteReminderMutation.mutateAsync(id);
       toast.success("Lembrete removido");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -475,7 +557,7 @@ function ProfilePage() {
         iconBg="bg-primary/10"
         title="Categorias"
         subtitle="Cores para agrupar compromissos e tarefas"
-        headerAction={<NewCategoryDialog coupleId={profile?.couple_id ?? null} onCreated={reload} />}
+        headerAction={<NewCategoryDialog coupleId={profile?.couple_id ?? null} onCreated={() => queryClient.invalidateQueries({ queryKey: QUERY_KEYS.categories })} />}
       >
 
         <ul className="space-y-2">
@@ -513,7 +595,6 @@ function ProfilePage() {
         subtitle="Trabalho, reuniões e blocos fixos"
         headerAction={
           <div className="flex shrink-0 items-center gap-1.5">
-            <RoutineTemplatesDialog coupleId={profile?.couple_id ?? null} onApplied={reload} />
             <Button
               size="sm"
               variant="outline"
@@ -799,6 +880,30 @@ function ProfilePage() {
         title="Figurinhas Manuais"
         subtitle="Envie suas próprias imagens (PNG, JPG, SVG)"
       >
+        <div className="mb-4 space-y-3 rounded-xl border bg-muted/20 p-3">
+          <div className="space-y-1">
+            <div className="flex items-baseline justify-between">
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Tamanho</Label>
+              <span className="font-mono text-xs text-muted-foreground">{Math.round(heroScale * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min={HERO_SCALE_MIN}
+              max={HERO_SCALE_MAX}
+              step={0.05}
+              value={heroScale}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                setHeroScale(v);
+                saveHeroScale(v);
+              }}
+              className="h-2 w-full cursor-pointer accent-primary"
+            />
+          </div>          <p className="text-[11px] text-muted-foreground">
+            Selecione uma figurinha abaixo e marque em quais lugares ela deve aparecer.
+          </p>
+        </div>
+
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {customIllustrations.map((ci) => {
             const id = `custom:${ci.id}`;
@@ -828,8 +933,30 @@ function ProfilePage() {
                   </div>
                 </button>
 
-                {/* Crop controls */}
+                {active && (
                 <div className="mt-2 space-y-1.5">
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {([
+                      ["hero", "Página inicial"],
+                      ["next", "Próximo compromisso"],
+                      ["empty", "Nada agendado"],
+                      ["login", "Login"],
+                    ] as Array<[HeroTarget, string]>).map(([target, label]) => {
+                      const checked = heroTargetIllustrations[target] === id;
+                      return (
+                        <label key={target} className="flex cursor-pointer items-center justify-between rounded-lg border bg-card px-2.5 py-1.5 text-[11px]">
+                          <span>{label}</span>
+                          <Switch
+                            checked={checked}
+                            onCheckedChange={(on) => {
+                              setHeroTargetIllustration(target, on ? id : null);
+                              setHeroTargetIllustrations(loadHeroTargetIllustrations());
+                            }}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
                   <CropSlider
                     label="Zoom"
                     min={100} max={300} step={5}
@@ -859,6 +986,7 @@ function ProfilePage() {
                     </button>
                   )}
                 </div>
+                )}
 
                 <button
                   type="button"
@@ -953,6 +1081,125 @@ function ProfilePage() {
         )}
       </CollapsibleSection>
 
+      <CollapsibleSection
+        icon={<Sliders className="h-5 w-5 text-primary" />}
+        iconBg="bg-primary/15"
+        title="Painel de Diagnóstico do Duo"
+        subtitle="Verifique o status de sincronização e corrija erros de perfil"
+      >
+        <div className="space-y-4 text-sm text-left">
+          {/* Card: Autenticação */}
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <UserIcon className="h-4 w-4 text-primary" /> Autenticação (Supabase Auth)
+            </h4>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-muted-foreground">Status:</span> {user ? "Conectado ✅" : "Desconectado ❌"}</p>
+              {user && (
+                <>
+                  <p><span className="text-muted-foreground">ID do Usuário:</span> <code className="bg-muted px-1 rounded break-all">{user.id}</code></p>
+                  <p><span className="text-muted-foreground">Email:</span> {user.email}</p>
+                  <p><span className="text-muted-foreground">Confirmado em:</span> {user.email_confirmed_at ? new Date(user.email_confirmed_at).toLocaleString() : "Não confirmado ❌"}</p>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Card: Perfil */}
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <Heart className="h-4 w-4 text-primary" /> Perfil no Banco (public.profiles)
+            </h4>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-muted-foreground">Status da Query:</span> {profileStatus}</p>
+              <p><span className="text-muted-foreground">Linha de Perfil Encontrada:</span> {profile ? "Sim ✅" : "Não encontrada ❌"}</p>
+              {profileError && (
+                <p className="text-destructive font-semibold"><span className="text-muted-foreground">Erro Supabase:</span> {(profileError as any).message || String(profileError)}</p>
+              )}
+              {profile && (
+                <>
+                  <p><span className="text-muted-foreground">Nome de Exibição:</span> {profile.display_name}</p>
+                  <p><span className="text-muted-foreground">ID do Casal:</span> {profile.couple_id ? <code className="bg-muted px-1 rounded break-all">{profile.couple_id}</code> : "Nenhum ❌"}</p>
+                </>
+              )}
+            </div>
+            {profile === null && user && (
+              <Button 
+                onClick={handleCreateProfileManually} 
+                disabled={creatingProfile} 
+                className="mt-3 w-full h-8 text-xs gradient-primary text-primary-foreground"
+              >
+                {creatingProfile ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : null}
+                Criar Perfil Manualmente no Banco
+              </Button>
+            )}
+          </div>
+
+          {/* Card: Sincronização de Casal */}
+          <div className="rounded-xl border bg-muted/20 p-3">
+            <h4 className="font-semibold text-foreground mb-2 flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-primary" /> Sincronização de Casal (public.couples)
+            </h4>
+            <div className="space-y-1 text-xs">
+              <p><span className="text-muted-foreground">ID do Casal:</span> {coupleId ? <code className="bg-muted px-1 rounded break-all">{coupleId}</code> : "Nenhum ❌"}</p>
+              <p><span className="text-muted-foreground">Dados do Casal Carregados:</span> {couple ? "Sim ✅" : "Não ❌"}</p>
+              {couple && (
+                <p><span className="text-muted-foreground">Código de Convite:</span> <code className="bg-muted px-1 rounded font-bold text-primary">{couple.invite_code}</code></p>
+              )}
+              <p><span className="text-muted-foreground">Parceiro(a) Sincronizado(a):</span> {partner ? `${partner.display_name} (${partner.id})` : "Nenhum parceiro encontrado ❌"}</p>
+              {partnerError && (
+                <p className="text-destructive font-semibold"><span className="text-muted-foreground">Erro do Parceiro:</span> {(partnerError as any).message || String(partnerError)}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Card: Solução de Problemas no Backend */}
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+            <h4 className="font-semibold text-amber-500 mb-1 flex items-center gap-1.5">
+              ⚠️ Correção no Banco de Dados (Supabase)
+            </h4>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Se as informações acima mostram que o perfil não existe ou não atualiza, copie o script SQL abaixo e execute-o no <strong>SQL Editor</strong> do seu painel do Supabase para corrigir e sincronizar as contas.
+            </p>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                className="h-8 text-xs w-full"
+                onClick={() => {
+                  const sql = `-- 1. Garante que o trigger de criação automática de perfil esteja ativo\nCREATE OR REPLACE FUNCTION public.handle_new_user()\nRETURNS trigger\nLANGUAGE plpgsql\nSECURITY DEFINER\nSET search_path = public\nAS $$\nBEGIN\n  INSERT INTO public.profiles (id, display_name, color)\n  VALUES (\n    new.id,\n    COALESCE(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)),\n    COALESCE(new.raw_user_meta_data->>'color', '#6366f1')\n  )\n  ON CONFLICT (id) DO NOTHING;\n  RETURN new;\nEND;\n$$;\n\nDROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;\nCREATE TRIGGER on_auth_user_created\n  AFTER INSERT ON auth.users\n  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();\n\n-- 2. Insere perfis para usuários existentes que não têm perfil\nINSERT INTO public.profiles (id, display_name, color)\nSELECT id, COALESCE(raw_user_meta_data->>'display_name', split_part(email, '@', 1)), '#6366f1'\nFROM auth.users\nON CONFLICT (id) DO NOTHING;\n\n-- 3. Garante as políticas RLS corretas na tabela profiles\nALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;\n\nDROP POLICY IF EXISTS "Users view own and partner profile" ON public.profiles;\nCREATE POLICY "Users view own and partner profile"\n  ON public.profiles FOR SELECT TO authenticated\n  USING (\n    id = auth.uid()\n    OR (couple_id IS NOT NULL AND couple_id = public.get_user_couple_id(auth.uid()))\n  );\n\nDROP POLICY IF EXISTS "Users insert own profile" ON public.profiles;\nCREATE POLICY "Users insert own profile"\n  ON public.profiles FOR INSERT TO authenticated\n  WITH CHECK (id = auth.uid());\n\nDROP POLICY IF EXISTS "Users update own profile" ON public.profiles;\nCREATE POLICY "Users update own profile"\n  ON public.profiles FOR UPDATE TO authenticated\n  USING (id = auth.uid())\n  WITH CHECK (id = auth.uid());`;
+                  navigator.clipboard.writeText(sql);
+                  toast.success("Script SQL copiado! Cole no SQL Editor do Supabase.");
+                }}
+              >
+                <Copy className="h-3 w-3 mr-1" /> Copiar Script SQL de Reparo
+              </Button>
+              <Button
+                variant="outline"
+                className="h-8 text-xs w-full"
+                onClick={() => {
+                  const report = {
+                    user: user ? { id: user.id, email: user.email, confirmed: user.email_confirmed_at } : null,
+                    profile: profile ? { id: profile.id, display_name: profile.display_name, couple_id: profile.couple_id } : null,
+                    profileStatus,
+                    profileError: profileError ? (profileError as Error).message : null,
+                    couple: couple ? { id: couple.id, invite_code: couple.invite_code } : null,
+                    coupleStatus,
+                    coupleError: coupleError ? (coupleError as Error).message : null,
+                    partner: partner ? { id: partner.id, display_name: partner.display_name } : null,
+                    partnerStatus,
+                    partnerError: partnerError ? (partnerError as Error).message : null
+                  };
+                  navigator.clipboard.writeText(JSON.stringify(report, null, 2));
+                  toast.success("JSON de diagnóstico copiado!");
+                }}
+              >
+                <Copy className="h-3 w-3 mr-1" /> Copiar JSON de Diagnóstico
+              </Button>
+            </div>
+          </div>
+        </div>
+      </CollapsibleSection>
+
       <Button variant="ghost" onClick={signOut} className="w-full text-muted-foreground">
         <LogOut className="mr-1.5 h-4 w-4" /> Sair
       </Button>
@@ -980,12 +1227,18 @@ function ProfilePage() {
         onOpenChange={setRoutineDialogOpen}
         routine={editingRoutine}
         coupleId={profile?.couple_id ?? null}
-        onSaved={reload}
+        onSaved={() => {
+          setRoutineDialogOpen(false);
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.routines });
+        }}
       />
       <NewReminderDialog
         open={reminderDialogOpen}
         onOpenChange={setReminderDialogOpen}
-        onCreated={reload}
+        onCreated={() => {
+          setReminderDialogOpen(false);
+          if (user?.id) queryClient.invalidateQueries({ queryKey: QUERY_KEYS.reminders(user.id) });
+        }}
       />
     </div>
   );
@@ -1084,6 +1337,7 @@ function NewCategoryDialog({ coupleId, onCreated }: { coupleId: string | null; o
         couple_id: isShared ? coupleId : null,
         name: name.trim(),
         color,
+        is_shared: isShared,
       } as any);
       toast.success("Categoria criada");
       setName(""); setColor(PRESET_COLORS[0]); setIsShared(false);
@@ -1425,5 +1679,6 @@ function PushNotificationControl() {
     </div>
   );
 }
+
 
 

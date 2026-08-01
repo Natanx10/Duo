@@ -5,10 +5,14 @@ import { Heart, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  fetchCategories, fetchEventsInRange, fetchProfile, fetchRoutineExceptions, fetchRoutines, fetchTodos,
-  toggleTodoComplete, fetchStickers, fetchReminders,
-  type Category, type EventRow, type Profile, type Routine, type RoutineException, type Todo,
+  toggleTodoComplete,
+  type EventRow, type Routine,
 } from "@/lib/data";
+import { 
+  useProfile, useEvents, useTodos, useRoutines, useCategories, 
+  useRoutineExceptions, useReminders, useStickers, useApiMutation, QUERY_KEYS 
+} from "@/hooks/useData";
+import { useQueryClient } from "@tanstack/react-query";
 import { routinesForDay } from "@/lib/calendar-utils";
 import { EventDialog } from "@/components/EventDialog";
 import { TodoDialog } from "@/routes/_app.todos";
@@ -17,7 +21,7 @@ import { scheduleAll } from "@/lib/notifications";
 import couplePardoBranca from "@/assets/couple-pardo-branca.png";
 
 // Prefs
-import { useUiPrefs, animClass, particleVars, resolveHeroImage, activeIllustrationCropStyle, type BuiltInIllustrationId, saveCustomIllustrations } from "@/lib/ui-prefs";
+import { useUiPrefs, animClass, particleVars, resolveHeroImage, activeIllustrationCropStyle, type BuiltInIllustrationId, type HeroTarget, saveCustomIllustrations } from "@/lib/ui-prefs";
 
 // Dashboard Components
 import { DashboardHero } from "@/components/dashboard/DashboardHero";
@@ -27,6 +31,7 @@ import { DashboardTodosList } from "@/components/dashboard/DashboardTodosList";
 import { TodayRoutinesList } from "@/components/dashboard/TodayRoutinesList";
 import { UpcomingEventsList } from "@/components/dashboard/UpcomingEventsList";
 import { DashboardQuickActions } from "@/components/dashboard/DashboardQuickActions";
+import type { DashboardScheduleItem } from "@/components/dashboard/types";
 
 import stickerCats from "@/assets/sticker-cats.png";
 import stickerCoffeeMug from "@/assets/sticker-coffee-mug.png";
@@ -42,6 +47,7 @@ export const Route = createFileRoute("/_app/dashboard")({
 function Dashboard() {
   const { user } = useAuth();
   const ui = useUiPrefs();
+  const queryClient = useQueryClient();
   const emptyAnim = animClass(ui.empty);
   const importantTaskAnim = animClass(ui.importantTask);
   const importantEventAnim = animClass(ui.importantEvent);
@@ -55,30 +61,63 @@ function Dashboard() {
     "star": stickerStar,
   } as any;
 
-  const heroImageSrc = resolveHeroImage({
-    sticker: ui.sticker,
-    illustration: ui.illustration,
-    customStickers: ui.customStickers,
-    customIllustrations: ui.customIllustrations,
-    builtInIllustrations: { "pardo-branca": couplePardoBranca, "couple": couplePardoBranca, ...builtInStickers } as any,
-  });
+  const builtInIllustrations = { "pardo-branca": couplePardoBranca, "couple": couplePardoBranca, ...builtInStickers } as any;
   const heroFallbackSrc = couplePardoBranca;
-  const heroAppliesTo = (t: "hero" | "empty" | "login") => ui.heroTargets.includes(t);
-  const heroSrcFor = (t: "hero" | "empty" | "login") => (heroAppliesTo(t) ? heroImageSrc : heroFallbackSrc);
-  const heroCropFor = (t: "hero" | "empty" | "login") =>
-    heroAppliesTo(t) ? activeIllustrationCropStyle(ui.illustration, ui.customIllustrations) : { objectFit: "contain" as const, objectPosition: "center" as const };
+  const heroAppliesTo = (t: HeroTarget) => Boolean(ui.heroTargetIllustrations[t]);
+  const illustrationFor = (t: HeroTarget) => ui.heroTargetIllustrations[t] ?? ui.illustration;
+  const heroSrcFor = (t: HeroTarget) => {
+    if (!heroAppliesTo(t)) return heroFallbackSrc;
+    return resolveHeroImage({
+      sticker: "none",
+      illustration: illustrationFor(t),
+      customStickers: ui.customStickers,
+      customIllustrations: ui.customIllustrations,
+      builtInIllustrations,
+    });
+  };
+  const heroCropFor = (t: HeroTarget) =>
+    heroAppliesTo(t) ? activeIllustrationCropStyle(illustrationFor(t), ui.customIllustrations) : { objectFit: "contain" as const, objectPosition: "center" as const };
   const heroScale = ui.heroScale;
   
   const particlesImpStyle = particleVars(ui.particlesImportant.intensity, ui.particlesImportant.density, ui.particlesImportant.brightness, ui.particlesImportant.color);
   const particlesCplStyle = particleVars(ui.particlesCouple.intensity, ui.particlesCouple.density, ui.particlesCouple.brightness, ui.particlesCouple.color);
   
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [todos, setTodos] = useState<Todo[]>([]);
-  const [routines, setRoutines] = useState<Routine[]>([]);
-  const [routineExceptions, setRoutineExceptions] = useState<RoutineException[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: profile, isLoading: loadingProfile, isPending: pendingProfile, isFetching: fetchingProfile, error: profileError, status: profileStatus } = useProfile(user?.id);
+  const coupleId = profile?.couple_id ?? null;
+  const { data: events = [] } = useEvents(
+    startOfDay(new Date()).toISOString(), 
+    endOfDay(addDays(new Date(), 7)).toISOString(),
+    coupleId,
+    user?.id
+  );
+  const { data: todos = [] } = useTodos(coupleId, user?.id);
+  const { data: routines = [] } = useRoutines(coupleId, user?.id);
+  const { data: routineExceptions = [] } = useRoutineExceptions(coupleId, user?.id);
+  const { data: categories = [] } = useCategories(coupleId, user?.id);
+  const { data: reminders = [] } = useReminders(user?.id);
+  const { data: stickers = [] } = useStickers(profile?.couple_id);
+
+  // DEBUG: remove after fixing
+  console.log("[Dashboard DEBUG]", {
+    userId: user?.id,
+    userEmail: user?.email,
+    profileStatus,
+    loadingProfile,
+    pendingProfile,
+    fetchingProfile,
+    profileError: profileError?.message,
+    profile: profile ? { id: profile.id, display_name: profile.display_name, couple_id: profile.couple_id } : null,
+    coupleId,
+    eventsCount: events.length,
+    todosCount: todos.length,
+    routinesCount: routines.length,
+    categoriesCount: categories.length,
+  });
+
+  // In TanStack Query v5, disabled queries have isLoading=false (isPending && !isFetching)
+  // so we only need to wait for profile to load
+  const loading = loadingProfile;
+  
   const [dialogOpen, setDialogOpen] = useState(false);
   const [todoDialogOpen, setTodoDialogOpen] = useState(false);
 
@@ -89,66 +128,51 @@ function Dashboard() {
     return "Boa noite";
   }, []);
 
-  const reload = useCallback(async () => {
-    if (!user) return;
-    const [p, evs, ts, rts, cats, excs, rems] = await Promise.all([
-      fetchProfile(user.id),
-      fetchEventsInRange(startOfDay(new Date()).toISOString(), endOfDay(addDays(new Date(), 7)).toISOString()),
-      fetchTodos(),
-      fetchRoutines(),
-      fetchCategories(),
-      fetchRoutineExceptions(),
-      fetchReminders(),
-    ]);
-    
-    if (p?.couple_id) {
-      try {
-        const stickers = await fetchStickers(p.couple_id);
-        const illustrations = stickers.map(s => ({
-          id: s.id,
-          label: s.label || "Figurinha",
-          dataUrl: s.image_url,
-          crop: { zoom: 1, offsetX: 0, offsetY: 0 }
-        }));
-        // Preserva o crop (zoom/pan) se a figurinha já existia no localStorage
-        const existing = JSON.parse(localStorage.getItem("duo:custom-illustrations") || "[]");
-        const merged = illustrations.map(ill => {
+  // Side effects: Stickers and Reminders
+  useEffect(() => {
+    if (stickers.length > 0) {
+      const illustrations = stickers.map(s => ({
+        id: s.id,
+        label: s.label || "Figurinha",
+        dataUrl: s.image_url,
+        crop: { zoom: 1, offsetX: 0, offsetY: 0 }
+      }));
+      const existing = JSON.parse(localStorage.getItem("duo:custom-illustrations") || "[]");
+      const dbIds = new Set(illustrations.map((ill) => ill.id));
+      const merged = [
+        ...existing.filter((ex: any) => ex?.id && !dbIds.has(ex.id)),
+        ...illustrations.map(ill => {
           const ex = existing.find((e: any) => e.id === ill.id);
           if (ex && ex.crop) return { ...ill, crop: ex.crop };
           return ill;
-        });
-        saveCustomIllustrations(merged);
-      } catch (err) {
-        console.error("Erro ao carregar figurinhas do casal", err);
-      }
+        }),
+      ];
+      saveCustomIllustrations(merged);
     }
+  }, [stickers]);
 
-    if (rems) {
-      scheduleAll(rems.filter(r => r.is_active).map(r => ({
+  useEffect(() => {
+    if (reminders.length > 0) {
+      scheduleAll(reminders.filter(r => r.is_active).map(r => ({
         id: r.id,
         title: r.title,
+        body: "Toque para abrir sua agenda.",
         remindTime: r.remind_time,
         remindAt: r.remind_at,
         daysOfWeek: r.days_of_week
       })));
     }
+  }, [reminders]);
 
-    setProfile(p);
-    setEvents(evs);
-    setTodos(ts);
-    setRoutines(rts);
-    setCategories(cats);
-    setRoutineExceptions(excs);
-    setLoading(false);
-  }, [user]);
+  const toggleTodoMutation = useApiMutation(
+    ({ id, isCompleted }: { id: string; isCompleted: boolean }) => toggleTodoComplete(id, isCompleted),
+    [QUERY_KEYS.todos]
+  );
 
-  useEffect(() => { reload(); }, [reload]);
-
-  const handleToggleTodo = async (t: Todo) => {
+  const handleToggleTodo = async (t: any) => {
     try {
-      await toggleTodoComplete(t.id, !t.is_completed);
+      await toggleTodoMutation.mutateAsync({ id: t.id, isCompleted: !t.is_completed });
       toast.success(t.is_completed ? "Reaberta" : "Concluída ✓");
-      reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Erro");
     }
@@ -156,16 +180,75 @@ function Dashboard() {
 
   const now = new Date();
   const todayEvents = events.filter((e) => isToday(parseISO(e.starts_at)));
-  const futureSorted = events.filter((e) => isAfter(parseISO(e.ends_at), now));
-  const nextEvent = futureSorted[0];
-  const upcoming = (nextEvent ? futureSorted.slice(1) : futureSorted).slice(0, 5);
-  const importantEvents = events.filter((e) => e.priority >= 2 && isAfter(parseISO(e.ends_at), now)).slice(0, 3);
-  
-  const todayDateStr = (() => {
-    const d = now;
+  const dateOnly = (d: Date) => {
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  })();
+  };
+  const todayDateStr = dateOnly(now);
+  const isRoutineSkipped = (routineId: string, day: Date) =>
+    routineExceptions.some((e) => e.routine_id === routineId && e.exception_date === dateOnly(day));
+  const routineOccurrences = Array.from({ length: 8 }, (_, offset) => {
+    const day = addDays(now, offset);
+    return routinesForDay(routines, day)
+      .filter((r) => !isRoutineSkipped(r.id, day))
+      .map<DashboardScheduleItem>((r) => {
+        const [sh, sm] = r.start_time.split(":").map(Number);
+        const [eh, em] = r.end_time.split(":").map(Number);
+        const start = new Date(day);
+        start.setHours(sh, sm ?? 0, 0, 0);
+        const end = new Date(day);
+        end.setHours(eh, em ?? 0, 0, 0);
+        if (end <= start) end.setDate(end.getDate() + 1);
+        return {
+          id: `routine-${r.id}-${dateOnly(day)}`,
+          kind: "routine",
+          title: r.title,
+          starts_at: start.toISOString(),
+          ends_at: end.toISOString(),
+          category_id: null,
+          is_shared: Boolean((r as any).is_shared),
+          user_id: (r as any).user_id ?? null,
+          color: r.color,
+        };
+      });
+  }).flat();
+  const activeOrFutureItems = [
+    ...events.map<DashboardScheduleItem>((e) => ({
+      id: `event-${e.id}`,
+      kind: "event",
+      title: e.title,
+      starts_at: e.starts_at,
+      ends_at: e.ends_at,
+      category_id: e.category_id,
+      is_shared: e.is_shared,
+      user_id: (e as any).user_id ?? null,
+    })),
+    ...routineOccurrences,
+  ]
+    .filter((item) => parseISO(item.ends_at).getTime() > now.getTime())
+    .sort((a, b) => {
+      const startDiff = parseISO(a.starts_at).getTime() - parseISO(b.starts_at).getTime();
+      if (startDiff !== 0) return startDiff;
+      return parseISO(a.ends_at).getTime() - parseISO(b.ends_at).getTime();
+    });
+  const nextEvent = activeOrFutureItems.find((e) => {
+    const start = parseISO(e.starts_at).getTime();
+    const end = parseISO(e.ends_at).getTime();
+    return start <= now.getTime() && end > now.getTime();
+  }) ?? activeOrFutureItems.find((e) => parseISO(e.starts_at).getTime() > now.getTime());
+  const nextEventIsCurrent = Boolean(
+    nextEvent &&
+      parseISO(nextEvent.starts_at).getTime() <= now.getTime() &&
+      parseISO(nextEvent.ends_at).getTime() > now.getTime(),
+  );
+  const nextEventIndex = nextEvent ? activeOrFutureItems.findIndex((e) => e.id === nextEvent.id) : -1;
+  const canShowInUpcoming = (item: DashboardScheduleItem) =>
+    item.is_shared || item.user_id === user?.id;
+  const upcoming = (nextEventIndex >= 0 ? activeOrFutureItems.slice(nextEventIndex + 1) : activeOrFutureItems)
+    .filter(canShowInUpcoming)
+    .slice(0, 1);
+  const importantEvents = events.filter((e) => e.priority >= 2 && isAfter(parseISO(e.ends_at), now)).slice(0, 3);
+  
   const skippedTodayIds = new Set(
     routineExceptions.filter((e) => e.exception_date === todayDateStr).map((e) => e.routine_id)
   );
@@ -219,7 +302,22 @@ function Dashboard() {
         <h1 className="text-3xl font-bold tracking-tight">{profile?.display_name ?? "você"}</h1>
       </header>
 
-      {!loading && !profile?.couple_id && (
+      {profile === null && (
+        <Link
+          to="/profile"
+          className="mb-5 flex items-center gap-3 rounded-2xl border border-destructive/35 bg-destructive/10 p-4 transition-all hover:bg-destructive/15"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-destructive/15">
+            <Heart className="h-5 w-5 text-destructive" fill="currentColor" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-destructive">Perfil não inicializado</p>
+            <p className="text-xs text-muted-foreground">Toque aqui para acessar a aba Perfil e restaurar os dados da sua conta.</p>
+          </div>
+        </Link>
+      )}
+
+      {!loading && profile && !profile.couple_id && (
         <Link
           to="/profile"
           className="mb-5 flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/5 p-4 transition-all hover:bg-primary/10"
@@ -236,6 +334,7 @@ function Dashboard() {
 
       <DashboardHero 
         nextEvent={nextEvent}
+        isCurrentEvent={nextEventIsCurrent}
         emptyAnim={emptyAnim}
         heroScale={heroScale}
         heroSrcFor={heroSrcFor}
@@ -289,7 +388,10 @@ function Dashboard() {
         coupleId={profile?.couple_id ?? null}
         existingEvents={events}
         routines={routines}
-        onSaved={reload}
+        onSaved={() => {
+          setDialogOpen(false);
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.events });
+        }}
       />
       <TodoDialog
         open={todoDialogOpen}
@@ -297,7 +399,10 @@ function Dashboard() {
         todo={null}
         categories={categories}
         coupleId={profile?.couple_id ?? null}
-        onSaved={reload}
+        onSaved={() => {
+          setTodoDialogOpen(false);
+          queryClient.invalidateQueries({ queryKey: QUERY_KEYS.todos });
+        }}
       />
     </div>
   );
