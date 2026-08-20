@@ -52,6 +52,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetCooldown, setResetCooldown] = useState(0);
 
   // After auth, if we have an invite code, auto-join the couple before redirecting.
   useEffect(() => {
@@ -71,6 +72,16 @@ function AuthPage() {
       navigate({ to: "/dashboard", replace: true });
     })();
   }, [session, loading, hasInvite, invite, navigate]);
+
+  useEffect(() => {
+    if (resetCooldown <= 0) return;
+
+    const timer = window.setTimeout(() => {
+      setResetCooldown((seconds) => Math.max(0, seconds - 1));
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [resetCooldown]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,6 +114,11 @@ function AuthPage() {
   };
 
   const handleForgotPassword = async () => {
+    if (resetCooldown > 0) {
+      toast.error(`Aguarde ${resetCooldown}s antes de pedir outro email`);
+      return;
+    }
+
     if (!email) {
       toast.error("Digite seu email acima para receber o link de recuperacao");
       return;
@@ -115,6 +131,7 @@ function AuthPage() {
       });
       if (error) throw error;
       toast.success("Enviamos um link de recuperacao para seu email");
+      setResetCooldown(60);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Nao foi possivel enviar o email");
     } finally {
@@ -252,10 +269,10 @@ function AuthPage() {
               <button
                 type="button"
                 onClick={handleForgotPassword}
-                disabled={busy}
+                disabled={busy || resetCooldown > 0}
                 className="block w-full text-center text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:opacity-50"
               >
-                Esqueci minha senha
+                {resetCooldown > 0 ? `Aguarde ${resetCooldown}s para reenviar` : "Esqueci minha senha"}
               </button>
             )}
           </form>
