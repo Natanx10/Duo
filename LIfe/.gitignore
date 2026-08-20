@@ -35,3 +35,8 @@ dist-ssr
 
 .vercel
 .env*.local
+
+# Test scripts
+*.mjs
+!eslint.config.mjs
+!vite.config.mjs
