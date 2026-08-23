@@ -11,8 +11,8 @@
 - [ ] **[T1.4]** Limpar lógicas de retry, cast e regex em data.ts, adequando aos payloads reais.
 
 ## FASE 1.5 — Correções estruturais descobertas na T1.2
-- [ ] **[T1.5]** Aplicar 20260822000000_reconcile_to_production_schema.sql no staging e revalidar com compare_dumps.
-- [ ] **[T1.6]** Aplicar 20260823000000_restore_scoped_policies.sql no staging, testar isolamento entre casais.
+- [x] **[T1.5]** Aplicar 20260822000000_reconcile_to_production_schema.sql no staging e revalidar com compare_dumps. RESULTADO: paridade estrutural total (0 diffs em tabelas/colunas/constraints/indexes/triggers/FORCERLS).
+- [x] **[T1.6]** Aplicar 20260823000000_restore_scoped_policies.sql no staging. RESULTADO: zero policies permissivas; isolamento por casal ativo. Residual documentado: categories.
 - [ ] **[T1.7]** Com aprovação explícita: aplicar ambas na PRODUÇÃO e revalidar app ponta a ponta.
 
 ## FASE 2 — Segurança entre projetos

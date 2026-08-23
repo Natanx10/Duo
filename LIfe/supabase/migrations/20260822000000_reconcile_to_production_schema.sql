@@ -156,3 +156,13 @@ DROP TRIGGER IF EXISTS routines_updated_at ON public.routines;
 DROP TRIGGER IF EXISTS update_todos_updated_at ON public.todos;
 DROP FUNCTION IF EXISTS public.set_updated_at();
 DROP FUNCTION IF EXISTS public.update_updated_at_column();
+
+-- ---- Supplement (live-validated on duo-staging) ----
+ALTER TABLE public.couples NO FORCE ROW LEVEL SECURITY;
+DROP INDEX IF EXISTS public.events_couple_id_idx;
+DROP INDEX IF EXISTS public.events_starts_at_idx;
+DROP INDEX IF EXISTS public.idx_habit_checkins_habit_date;
+DROP INDEX IF EXISTS public.idx_routine_exceptions_routine;
+DROP INDEX IF EXISTS public.idx_routines_couple;
+DROP INDEX IF EXISTS public.idx_todos_couple_id;
+DROP INDEX IF EXISTS public.idx_todos_due_at;
