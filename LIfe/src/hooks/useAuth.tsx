@@ -45,7 +45,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const COUPLE_SCOPED_KEYS = [
+    "duo:custom-stickers",
+    "duo:custom-illustrations",
+    "duo:sticker",
+    "duo:illustration",
+    "duo:hero-target-illustrations",
+    "duo:scheduled-reminders",
+  ];
+
   const signOut = async () => {
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (!key) continue;
+        if (key.startsWith("duo-sticker-") || COUPLE_SCOPED_KEYS.includes(key)) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch {
+      /* ignore */
+    }
     await supabase.auth.signOut();
   };
 

@@ -6,6 +6,8 @@ import { BottomNav } from "@/components/BottomNav";
 import { useProfile } from "@/hooks/useData";
 import { supabase } from "@/integrations/supabase/client";
 import { defaultProfileColor } from "@/lib/profile-colors";
+import { fetchReminders } from "@/lib/data";
+import { getNotificationPermission, rescheduleFromStorage, scheduleAll } from "@/lib/notifications";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -20,6 +22,34 @@ function AppLayout() {
   useEffect(() => {
     if (!loadingAuth && !session) navigate({ to: "/auth", replace: true });
   }, [session, loadingAuth, navigate]);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        if (getNotificationPermission() !== "granted") return;
+        const reminders = await fetchReminders(user.id);
+        if (cancelled) return;
+        scheduleAll(
+          reminders
+            .filter((r) => r.is_active)
+            .map((r) => ({
+              id: r.id,
+              title: r.title,
+              remindTime: r.remind_time,
+              daysOfWeek: r.days_of_week,
+              remindAt: r.remind_at,
+            }))
+        );
+      } catch {
+        rescheduleFromStorage();
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   // Auto-create profile if missing
   useEffect(() => {
