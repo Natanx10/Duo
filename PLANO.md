@@ -10,6 +10,11 @@
 - [ ] **[T1.3]** Regenerar tipos do Supabase.
 - [ ] **[T1.4]** Limpar lógicas de retry, cast e regex em data.ts, adequando aos payloads reais.
 
+## FASE 1.5 — Correções estruturais descobertas na T1.2
+- [ ] **[T1.5]** Aplicar 20260822000000_reconcile_to_production_schema.sql no staging e revalidar com compare_dumps.
+- [ ] **[T1.6]** Aplicar 20260823000000_restore_scoped_policies.sql no staging, testar isolamento entre casais.
+- [ ] **[T1.7]** Com aprovação explícita: aplicar ambas na PRODUÇÃO e revalidar app ponta a ponta.
+
 ## FASE 2 — Segurança entre projetos
 - [ ] **[T2.1]** Adaptar e copiar migrations de segurança para couple-calendar-connect. Parar em S4 antes de aplicar. Testar isolamento.
 - [ ] **[T2.2]** Revisar e commitar migrations de push modificadas + migration de notify_partner no ccc.
