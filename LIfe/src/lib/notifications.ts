@@ -26,6 +26,22 @@ const NOTIFICATION_ICON = "/pwa-192x192.png";
 const NOTIFICATION_BADGE = "/pwa-192x192.png";
 const DEFAULT_NOTIFICATION_TITLE = "Lembrete do Duo";
 const DEFAULT_NOTIFICATION_BODY = "Você tem um compromisso agendado.";
+const PUSH_SW_PATH = "/sw-push.js";
+
+let pushSwRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+
+export function registerPushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
+  if (!("serviceWorker" in navigator)) return Promise.resolve(null);
+  if (!pushSwRegistrationPromise) {
+    pushSwRegistrationPromise = navigator.serviceWorker
+      .register(PUSH_SW_PATH)
+      .catch((err) => {
+        console.error("[PushSW] Falha ao registrar sw-push.js:", err);
+        return null;
+      });
+  }
+  return pushSwRegistrationPromise;
+}
 
 export function isNotificationSupported(): boolean {
   return typeof window !== "undefined" && "Notification" in window;
@@ -56,7 +72,8 @@ export async function subscribeToPushNotifications(userId: string) {
     const permission = await requestNotificationPermission();
     if (permission !== "granted") return null;
 
-    const registration = await navigator.serviceWorker.ready;
+    const registration = await registerPushServiceWorker();
+    if (!registration) return null;
     const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
     if (!publicKey) {
       console.warn("VAPID public key nao configurada.");
@@ -120,9 +137,8 @@ async function fire(reminder: ScheduledReminder) {
   const body = reminder.body?.trim() || DEFAULT_NOTIFICATION_BODY;
 
   try {
-    if ("serviceWorker" in navigator) {
-      const registration = await navigator.serviceWorker.ready;
-      await registration.showNotification(title, {
+    const registration = (await registerPushServiceWorker()) ?? (await navigator.serviceWorker.ready);
+    await registration.showNotification(title, {
         body,
         tag: `reminder-${reminder.id}`,
         icon: NOTIFICATION_ICON,
@@ -137,8 +153,7 @@ async function fire(reminder: ScheduledReminder) {
           url: "/calendar",
         },
       } as NotificationOptions);
-      return;
-    }
+    return;
   } catch {
     // Fallback to basic Notification below.
   }
