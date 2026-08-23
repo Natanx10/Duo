@@ -13,7 +13,7 @@
 ## FASE 1.5 — Correções estruturais descobertas na T1.2
 - [x] **[T1.5]** Aplicar 20260822000000_reconcile_to_production_schema.sql no staging e revalidar com compare_dumps. RESULTADO: paridade estrutural total (0 diffs em tabelas/colunas/constraints/indexes/triggers/FORCERLS).
 - [x] **[T1.6]** Aplicar 20260823000000_restore_scoped_policies.sql no staging. RESULTADO: zero policies permissivas; isolamento por casal ativo. Residual documentado: categories.
-- [ ] **[T1.7]** Com aprovação explícita: aplicar ambas na PRODUÇÃO e revalidar app ponta a ponta.
+- [x] **[T1.7]** Aplicado na PRODUÇÃO com aprovação do dono. Reconciliação: 104 stmts, 0 erros (quase tudo no-op). Segurança: 8 blankets removidos, 28+7 policies granulares criadas. Inventário final validado tabela a tabela. Residual intencional: categories.
 
 ## FASE 2 — Segurança entre projetos
 - [ ] **[T2.1]** Adaptar e copiar migrations de segurança para couple-calendar-connect. Parar em S4 antes de aplicar. Testar isolamento.
