@@ -148,7 +148,9 @@ CREATE TABLE IF NOT EXISTS public.todos (  id uuid DEFAULT gen_random_uuid() NOT
 -- ============================================================
 -- CONSTRAINTS (PK / UNIQUE / FK / CHECK)
 -- ============================================================
-ALTER TABLE public.couples ADD CONSTRAINT couples_invite_code_key UNIQUE (invite_code);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'couples_invite_code_key' AND conrelid = 'public.couples'::regclass) THEN
+    ALTER TABLE public.couples ADD CONSTRAINT couples_invite_code_key UNIQUE (invite_code);
 ALTER TABLE public.events ADD CONSTRAINT events_category_id_fkey FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL;
 ALTER TABLE public.events ADD CONSTRAINT events_couple_id_fkey FOREIGN KEY (couple_id) REFERENCES couples(id) ON DELETE CASCADE;
 ALTER TABLE public.events ADD CONSTRAINT events_created_by_fkey FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE CASCADE;
@@ -394,6 +396,7 @@ AS '$libdir/http', $function$urlencode_jsonb$function$
 -- TRIGGERS (incl. auth.users)
 -- ============================================================
 -- on auth.users
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
 -- NOTE: triggers on auth.users may require elevated privileges to replay.
@@ -422,119 +425,142 @@ ALTER TABLE public.todos ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 -- POLICIES (public)
 -- ============================================================
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.categories;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.categories
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.couples;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.couples
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "Couple members delete events" ON public.events;
 CREATE POLICY "Couple members delete events" ON public.events
   FOR DELETE
   TO "authenticated"
   USING (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Couple members insert events" ON public.events;
 CREATE POLICY "Couple members insert events" ON public.events
   FOR INSERT
   TO "authenticated"
   WITH CHECK (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Couple members update events" ON public.events;
 CREATE POLICY "Couple members update events" ON public.events
   FOR UPDATE
   TO "authenticated"
   USING (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))))
   WITH CHECK (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Couple members view events" ON public.events;
 CREATE POLICY "Couple members view events" ON public.events
   FOR SELECT
   TO "authenticated"
   USING (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.habit_checkins;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.habit_checkins
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.habits;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.habits
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "Users insert own profile" ON public.profiles;
 CREATE POLICY "Users insert own profile" ON public.profiles
   FOR INSERT
   TO "authenticated"
   WITH CHECK ((id = auth.uid()));
 
+DROP POLICY IF EXISTS "Users update own profile" ON public.profiles;
 CREATE POLICY "Users update own profile" ON public.profiles
   FOR UPDATE
   TO "authenticated"
   USING ((id = auth.uid()))
   WITH CHECK ((id = auth.uid()));
 
+DROP POLICY IF EXISTS "Users view own and partner profile" ON public.profiles;
 CREATE POLICY "Users view own and partner profile" ON public.profiles
   FOR SELECT
   TO "authenticated"
   USING (((id = auth.uid()) OR ((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid())))));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.push_subscriptions;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.push_subscriptions
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "push_subs_delete_own" ON public.push_subscriptions;
 CREATE POLICY "push_subs_delete_own" ON public.push_subscriptions
   FOR DELETE
   TO "public"
   USING ((auth.uid() = user_id));
 
+DROP POLICY IF EXISTS "push_subs_insert_own" ON public.push_subscriptions;
 CREATE POLICY "push_subs_insert_own" ON public.push_subscriptions
   FOR INSERT
   TO "public"
   WITH CHECK ((auth.uid() = user_id));
 
+DROP POLICY IF EXISTS "push_subs_select_own" ON public.push_subscriptions;
 CREATE POLICY "push_subs_select_own" ON public.push_subscriptions
   FOR SELECT
   TO "public"
   USING ((auth.uid() = user_id));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.reminders;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.reminders
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.routine_exceptions;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.routine_exceptions
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "Couple members delete routines" ON public.routines;
 CREATE POLICY "Couple members delete routines" ON public.routines
   FOR DELETE
   TO "authenticated"
   USING (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Couple members insert routines" ON public.routines;
 CREATE POLICY "Couple members insert routines" ON public.routines
   FOR INSERT
   TO "authenticated"
   WITH CHECK (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Couple members update routines" ON public.routines;
 CREATE POLICY "Couple members update routines" ON public.routines
   FOR UPDATE
   TO "authenticated"
   USING (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))))
   WITH CHECK (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Couple members view routines" ON public.routines;
 CREATE POLICY "Couple members view routines" ON public.routines
   FOR SELECT
   TO "authenticated"
   USING (((couple_id IS NOT NULL) AND (couple_id = get_user_couple_id(auth.uid()))));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.stickers;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.stickers
   FOR ALL
   TO "public"
   USING ((auth.role() = 'authenticated'::text));
 
+DROP POLICY IF EXISTS "Permitir acesso total a todos os autenticados" ON public.todos;
 CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.todos
   FOR ALL
   TO "public"
@@ -544,11 +570,13 @@ CREATE POLICY "Permitir acesso total a todos os autenticados" ON public.todos
 -- ============================================================
 -- POLICIES (storage)
 -- ============================================================
+DROP POLICY IF EXISTS "Acesso publico as imagens" ON storage.objects;
 CREATE POLICY "Acesso publico as imagens" ON storage.objects
   FOR SELECT
   TO "public"
   USING ((bucket_id = 'stickers'::text));
 
+DROP POLICY IF EXISTS "Permitir upload para usuarios autenticados" ON storage.objects;
 CREATE POLICY "Permitir upload para usuarios autenticados" ON storage.objects
   FOR INSERT
   TO "public"
@@ -693,5 +721,7 @@ GRANT UPDATE (category_id, completed_at, couple_id, created_at, created_by, desc
 GRANT SELECT (category_id, completed_at, couple_id, created_at, created_by, description, due_at, id, is_completed, is_shared, priority, show_in_calendar, title, updated_at) ON public.todos TO authenticated;
 GRANT REFERENCES (category_id, completed_at, couple_id, created_at, created_by, description, due_at, id, is_completed, is_shared, priority, show_in_calendar, title, updated_at) ON public.todos TO authenticated;
 GRANT INSERT (category_id, completed_at, couple_id, created_at, created_by, description, due_at, id, is_completed, is_shared, priority, show_in_calendar, title, updated_at) ON public.todos TO authenticated;
+  END IF;
+END $$;
 
 -- Sequence-level: reset then restore

@@ -6,7 +6,7 @@
 
 ## FASE 1 — Verdade do schema (prioridade máxima)
 - [x] **[T1.1]** Parar em S3 para solicitar DATABASE_URL. Realizar dump do schema de produção e revisar.
-- [ ] **[T1.2]** Recriar banco limpo, aplicar migrations e comparar com o dump (supabase db diff).
+- [x] **[T1.2]** Recriar banco limpo, aplicar migrations e comparar com o dump (supabase db diff). RESULTADO: replay funcional apenas statement-a-statement via pooler; drift de produção catalogado em _tools/final_compare.txt (colunas created_by, policies permissivas, NOT NULLs, FORCERLS). Pendente: migration de reconciliação de colunas.
 - [ ] **[T1.3]** Regenerar tipos do Supabase.
 - [ ] **[T1.4]** Limpar lógicas de retry, cast e regex em data.ts, adequando aos payloads reais.
 
