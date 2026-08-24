@@ -14,6 +14,9 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      workbox: {
+        importScripts: ['/push-handlers.js']
+      },
       manifest: {
         name: 'Duo - Calendario do Casal',
         short_name: 'Duo',

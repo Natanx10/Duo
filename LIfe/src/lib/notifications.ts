@@ -26,19 +26,20 @@ const NOTIFICATION_ICON = "/pwa-192x192.png";
 const NOTIFICATION_BADGE = "/pwa-192x192.png";
 const DEFAULT_NOTIFICATION_TITLE = "Lembrete do Duo";
 const DEFAULT_NOTIFICATION_BODY = "Você tem um compromisso agendado.";
-const PUSH_SW_PATH = "/sw-push.js";
 
 let pushSwRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
+/**
+ * Retorna o Service Worker unico do app (gerado pelo vite-plugin-pwa,
+ * que ja contem os ouvintes de push via workbox.importScripts).
+ */
 export function registerPushServiceWorker(): Promise<ServiceWorkerRegistration | null> {
   if (!("serviceWorker" in navigator)) return Promise.resolve(null);
   if (!pushSwRegistrationPromise) {
-    pushSwRegistrationPromise = navigator.serviceWorker
-      .register(PUSH_SW_PATH)
-      .catch((err) => {
-        console.error("[PushSW] Falha ao registrar sw-push.js:", err);
-        return null;
-      });
+    pushSwRegistrationPromise = navigator.serviceWorker.ready.catch((err) => {
+      console.error("[PushSW] Service Worker nao disponivel:", err);
+      return null;
+    });
   }
   return pushSwRegistrationPromise;
 }
