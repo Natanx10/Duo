@@ -72,13 +72,30 @@ export async function subscribeToPushNotifications(userId: string) {
   try {
     const permission = await requestNotificationPermission();
     if (permission !== "granted") return null;
-
     const registration = await registerPushServiceWorker();
     if (!registration) return null;
+
     const publicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
     if (!publicKey) {
       console.warn("VAPID public key nao configurada.");
       return null;
+    }
+
+    // Substituicao limpa: inscricao antiga (possivelmente criada com outra
+    // chave VAPID) e invalidada no browser E removida do banco.
+    let oldEndpoint: string | null = null;
+    try {
+      const oldSub = await registration.pushManager.getSubscription();
+      if (oldSub) {
+        oldEndpoint = oldSub.endpoint;
+        await oldSub.unsubscribe();
+      }
+    } catch {
+      /* best effort */
+    }
+    if (oldEndpoint) {
+      const { deletePushSubscription } = await import("./data");
+      await deletePushSubscription(oldEndpoint);
     }
 
     const padding = "=".repeat((4 - publicKey.length % 4) % 4);

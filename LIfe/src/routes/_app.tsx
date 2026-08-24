@@ -35,11 +35,8 @@ function AppLayout() {
     (async () => {
       try {
         if (getNotificationPermission() !== "granted") return;
-        const registration = await registerPushServiceWorker();
-        if (registration) {
-          const existing = await registration.pushManager.getSubscription();
-          if (!existing) await subscribeToPushNotifications(user.id);
-        }
+        await registerPushServiceWorker();
+        await subscribeToPushNotifications(user.id);
         const reminders = await fetchReminders(user.id);
         if (cancelled) return;
         scheduleAll(

@@ -576,3 +576,13 @@ export async function savePushSubscription(userId: string, sub: PushSubscription
 
 
 
+
+export async function deletePushSubscription(endpoint: string) {
+  const { error } = await supabase
+    .from("push_subscriptions" as any)
+    .delete()
+    .eq("endpoint", endpoint);
+  if (error) {
+    console.error("Erro ao remover push subscription:", error);
+  }
+}
