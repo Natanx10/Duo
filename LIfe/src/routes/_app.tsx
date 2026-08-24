@@ -7,7 +7,13 @@ import { useProfile } from "@/hooks/useData";
 import { supabase } from "@/integrations/supabase/client";
 import { defaultProfileColor } from "@/lib/profile-colors";
 import { fetchReminders } from "@/lib/data";
-import { getNotificationPermission, rescheduleFromStorage, scheduleAll } from "@/lib/notifications";
+import {
+  getNotificationPermission,
+  registerPushServiceWorker,
+  rescheduleFromStorage,
+  scheduleAll,
+  subscribeToPushNotifications,
+} from "@/lib/notifications";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -29,6 +35,11 @@ function AppLayout() {
     (async () => {
       try {
         if (getNotificationPermission() !== "granted") return;
+        const registration = await registerPushServiceWorker();
+        if (registration) {
+          const existing = await registration.pushManager.getSubscription();
+          if (!existing) await subscribeToPushNotifications(user.id);
+        }
         const reminders = await fetchReminders(user.id);
         if (cancelled) return;
         scheduleAll(
