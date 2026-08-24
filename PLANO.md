@@ -15,6 +15,10 @@
 - [x] **[T1.6]** Aplicar 20260823000000_restore_scoped_policies.sql no staging. RESULTADO: zero policies permissivas; isolamento por casal ativo. Residual documentado: categories.
 - [x] **[T1.7]** Aplicado na PRODUÇÃO com aprovação do dono. Reconciliação: 104 stmts, 0 erros (quase tudo no-op). Segurança: 8 blankets removidos, 28+7 policies granulares criadas. Inventário final validado tabela a tabela. Residual intencional: categories.
 
+## FASE 1.6 — Web Push (notificação com app fechado)
+- [x] **[T1.8]** Pacote push criado: sw-push.js dedicado, Edge Function send-push blindada (CRON_SECRET), cron duo-push-reminders ativo na produção, par VAPID novo. Cliente assina via /sw-push.js.
+- [ ] **[T1.9]** Atualizar VITE_VAPID_PUBLIC_KEY na Vercel + redeploy; teste ponta a ponta com app fechado.
+
 ## FASE 2 — Segurança entre projetos
 - [ ] **[T2.1]** Adaptar e copiar migrations de segurança para couple-calendar-connect. Parar em S4 antes de aplicar. Testar isolamento.
 - [ ] **[T2.2]** Revisar e commitar migrations de push modificadas + migration de notify_partner no ccc.
