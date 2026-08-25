@@ -17,7 +17,7 @@
 
 ## FASE 1.6 — Web Push (notificação com app fechado)
 - [x] **[T1.8]** Pacote push criado: sw-push.js dedicado, Edge Function send-push blindada (CRON_SECRET), cron duo-push-reminders ativo na produção, par VAPID novo. Cliente assina via /sw-push.js.
-- [ ] **[T1.9]** Atualizar VITE_VAPID_PUBLIC_KEY na Vercel + redeploy; teste ponta a ponta com app fechado.
+- [x] **[T1.9]** VITE_VAPID_PUBLIC_KEY atualizada na Vercel; push entregue com sucesso em 2 dispositivos (details:[201,201]). Correções na saga: SW único via workbox.importScripts, re-assinatura forçada no login, web-push-neo com assinatura posicional.
 
 ## FASE 2 — Segurança entre projetos
 - [ ] **[T2.1]** Adaptar e copiar migrations de segurança para couple-calendar-connect. Parar em S4 antes de aplicar. Testar isolamento.
