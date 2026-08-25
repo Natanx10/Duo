@@ -46,7 +46,7 @@ import {
 } from "@/lib/ui-prefs";
 import { SafeImage } from "@/components/SafeImage";
 import {
-  getNotificationPermission, requestNotificationPermission, scheduleAll, subscribeToPushNotifications
+	getNotificationPermission, requestNotificationPermission, describeReminderBody, scheduleAll, subscribeToPushNotifications
 } from "@/lib/notifications";
 import couplePardoBranca from "@/assets/couple-pardo-branca.png"; import stickerCats from "@/assets/sticker-cats.png"; import stickerCoffeeMug from "@/assets/sticker-coffee-mug.png"; import stickerHeart from "@/assets/sticker-heart.png"; import stickerPlanet from "@/assets/sticker-planet.png"; import stickerStar from "@/assets/sticker-star.png"; const builtInStickers = { "cats": stickerCats, "coffee-mug": stickerCoffeeMug, "heart": stickerHeart, "planet": stickerPlanet, "star": stickerStar } as any;
 import { Button } from "@/components/ui/button";
@@ -305,7 +305,7 @@ function ProfilePage() {
         .map((r) => ({
           id: r.id,
           title: r.title,
-          body: "Toque para abrir sua agenda.",
+          body: describeReminderBody(r),
           remindTime: r.remind_time,
           daysOfWeek: r.days_of_week,
           remindAt: r.remind_at,

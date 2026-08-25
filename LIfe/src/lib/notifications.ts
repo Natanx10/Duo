@@ -209,6 +209,33 @@ function loadPersistedReminders(): ScheduledReminder[] {
   }
 }
 
+export function describeReminderBody(r: {
+  remindTime?: string | null;
+  remindAt?: string | null;
+  daysOfWeek?: number[] | null;
+  remind_time?: string | null;
+  remind_at?: string | null;
+  days_of_week?: number[] | null;
+}): string {
+  const remindTime = r.remindTime ?? r.remind_time ?? null;
+  const remindAt = r.remindAt ?? r.remind_at ?? null;
+  const daysOfWeek = r.daysOfWeek ?? r.days_of_week ?? null;
+
+  if (remindAt) {
+    const d = new Date(remindAt);
+    const date = d.toLocaleDateString("pt-BR");
+    const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return `${date} às ${time}`;
+  }
+  if (remindTime) {
+    if (daysOfWeek && daysOfWeek.length > 0) {
+      return `Rotina · ${daysOfWeek.length}/7 dias · às ${remindTime}`;
+    }
+    return `Diariamente às ${remindTime}`;
+  }
+  return DEFAULT_NOTIFICATION_BODY;
+}
+
 export function scheduleReminder(reminder: ScheduledReminder) {
   if (!isNotificationSupported() || Notification.permission !== "granted") return;
   clearScheduledReminder(reminder.id);

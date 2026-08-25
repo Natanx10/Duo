@@ -16,7 +16,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { routinesForDay } from "@/lib/calendar-utils";
 import { EventDialog } from "@/components/EventDialog";
 import { TodoDialog } from "@/routes/_app.todos";
-import { scheduleAll } from "@/lib/notifications";
+import { describeReminderBody, scheduleAll } from "@/lib/notifications";
 
 import couplePardoBranca from "@/assets/couple-pardo-branca.png";
 
@@ -156,7 +156,7 @@ function Dashboard() {
       scheduleAll(reminders.filter(r => r.is_active).map(r => ({
         id: r.id,
         title: r.title,
-        body: "Toque para abrir sua agenda.",
+        body: describeReminderBody(r),
         remindTime: r.remind_time,
         remindAt: r.remind_at,
         daysOfWeek: r.days_of_week
